@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: lappbot-app
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+      - VALKEY_HOST=valkey
+    depends_on:
+      - db
+      - valkey
+  db:
+    image: postgres:15-alpine
+    container_name: lappbot-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - ./.postgres_data:/var/lib/postgresql/data
+
+  valkey:
+    image: valkey/valkey:latest
+    container_name: lappbot-valkey
+    restart: always
+    ports:
+      - "${VALKEY_PORT}:6379"
+    volumes:
+      - valkey_data:/data
+
+volumes:
+  valkey_data:

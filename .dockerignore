@@ -1,0 +1,17 @@
+.git
+.gitignore
+.dockerignore
+.vscode
+.idea
+.postgres_data
+valkey_data
+vendor
+bin
+bot
+*.exe
+*.dll
+*.so
+*.dylib
+README.md
+Dockerfile
+docker-compose.yml
