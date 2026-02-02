@@ -40,6 +40,7 @@ A comprehensive blacklist system to automatically filter unwanted content.
 
 - Go 1.25+
 - PostgreSQL
+- Valkey
 
 1.  `git clone https://github.com/irvanmalik48/lappbot`
 
