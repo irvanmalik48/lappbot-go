@@ -109,9 +109,22 @@ func (m *Module) CheckBlacklist(next tele.HandlerFunc) tele.HandlerFunc {
 
 			switch item.Type {
 			case "regex":
-				matched, _ = regexp.MatchString(item.Value, c.Text())
-				if !matched && c.Message().Caption != "" {
-					matched, _ = regexp.MatchString(item.Value, c.Message().Caption)
+				var re *regexp.Regexp
+				if val, ok := m.RegexCache.Load(item.Value); ok {
+					re = val.(*regexp.Regexp)
+				} else {
+					var err error
+					re, err = regexp.Compile(item.Value)
+					if err == nil {
+						m.RegexCache.Store(item.Value, re)
+					}
+				}
+
+				if re != nil {
+					matched = re.MatchString(c.Text())
+					if !matched && c.Message().Caption != "" {
+						matched = re.MatchString(c.Message().Caption)
+					}
 				}
 			case "sticker_set":
 				if c.Message().Sticker != nil {

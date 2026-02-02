@@ -5,17 +5,24 @@ import (
 	"fmt"
 	"lappbot/internal/bot"
 	"lappbot/internal/store"
+	"strings"
+	"sync"
 
 	tele "gopkg.in/telebot.v3"
 )
 
 type Module struct {
-	Bot   *bot.Bot
-	Store *store.Store
+	Bot        *bot.Bot
+	Store      *store.Store
+	RegexCache *sync.Map
 }
 
 func New(b *bot.Bot, s *store.Store) *Module {
-	return &Module{Bot: b, Store: s}
+	return &Module{
+		Bot:        b,
+		Store:      s,
+		RegexCache: &sync.Map{},
+	}
 }
 
 func (m *Module) Register() {
@@ -29,11 +36,13 @@ func (m *Module) Register() {
 	m.Bot.Bot.Handle("/skick", m.handleSilentKick)
 
 	m.Bot.Bot.Handle("/ban", m.handleBan)
+	m.Bot.Bot.Handle("/unban", m.handleUnban)
 	m.Bot.Bot.Handle("/sban", m.handleSilentBan)
 	m.Bot.Bot.Handle("/tban", m.handleTimedBan)
 	m.Bot.Bot.Handle("/rban", m.handleRealmBan)
 
 	m.Bot.Bot.Handle("/mute", m.handleMute)
+	m.Bot.Bot.Handle("/unmute", m.handleUnmute)
 	m.Bot.Bot.Handle("/smute", m.handleSilentMute)
 	m.Bot.Bot.Handle("/tmute", m.handleTimedMute)
 	m.Bot.Bot.Handle("/rmute", m.handleRealmMute)
@@ -41,6 +50,8 @@ func (m *Module) Register() {
 	m.Bot.Bot.Handle("/purge", m.handlePurge)
 
 	m.Bot.Bot.Handle("/pin", m.handlePin)
+	m.Bot.Bot.Handle("/lock", m.handleLock)
+	m.Bot.Bot.Handle("/unlock", m.handleUnlock)
 
 	m.Bot.Bot.Handle("/bl", m.handleBlacklistAdd)
 	m.Bot.Bot.Handle("/unbl", m.handleBlacklistRemove)
@@ -90,5 +101,7 @@ func (m *Module) onRemoveWarn(c tele.Context) error {
 }
 
 func mention(u *tele.User) string {
-	return fmt.Sprintf("[%s](tg://user?id=%d)", u.FirstName, u.ID)
+	name := strings.ReplaceAll(u.FirstName, "]", "\\]")
+	name = strings.ReplaceAll(name, "[", "\\[")
+	return fmt.Sprintf("[%s](tg://user?id=%d)", name, u.ID)
 }

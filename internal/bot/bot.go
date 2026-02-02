@@ -64,3 +64,8 @@ func (b *Bot) IsAdmin(chat *tele.Chat, user *tele.User) bool {
 
 	return isAdmin
 }
+
+func (b *Bot) InvalidateAdminCache(chatID, userID int64) {
+	key := fmt.Sprintf("admin:%d:%d", chatID, userID)
+	b.Store.Valkey.Do(context.Background(), b.Store.Valkey.B().Del().Key(key).Build())
+}

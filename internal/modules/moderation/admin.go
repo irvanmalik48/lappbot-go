@@ -79,6 +79,7 @@ func (m *Module) handlePromote(c tele.Context) error {
 		return c.Send("Failed to promote user: " + err.Error())
 	}
 
+	m.Bot.InvalidateAdminCache(c.Chat().ID, target.ID)
 	return c.Send(fmt.Sprintf("%s promoted to admin with title '%s'.", mention(target), title), tele.ModeMarkdown)
 }
 
@@ -113,5 +114,6 @@ func (m *Module) handleDemote(c tele.Context) error {
 		return c.Send("Failed to demote user: " + err.Error())
 	}
 
+	m.Bot.InvalidateAdminCache(c.Chat().ID, target.ID)
 	return c.Send(fmt.Sprintf("%s demoted to member.", mention(target)), tele.ModeMarkdown)
 }

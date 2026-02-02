@@ -55,6 +55,31 @@ func (m *Module) muteUser(c tele.Context, silent bool) error {
 	return c.Send(fmt.Sprintf("%s muted.\nReason: %s", mention(target), reasonStr), tele.ModeMarkdown)
 }
 
+func (m *Module) handleUnmute(c tele.Context) error {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+		return nil
+	}
+	if !c.Message().IsReply() {
+		return c.Send("Reply to a user to unmute them.")
+	}
+	target := c.Message().ReplyTo.Sender
+
+	rights := tele.Rights{
+		CanSendMessages: true,
+		CanSendMedia:    true,
+		CanSendPolls:    true,
+		CanSendOther:    true,
+		CanAddPreviews:  true,
+	}
+
+	err := m.Bot.Bot.Restrict(c.Chat(), &tele.ChatMember{User: target, Rights: rights})
+	if err != nil {
+		return c.Send("Failed to unmute user: " + err.Error())
+	}
+
+	return c.Send(fmt.Sprintf("%s unmuted.", mention(target)), tele.ModeMarkdown)
+}
+
 func (m *Module) handleTimedMute(c tele.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil

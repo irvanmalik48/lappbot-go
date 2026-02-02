@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"lappbot/internal/bot"
 	"lappbot/internal/config"
+	"runtime"
 	"time"
 
 	tele "gopkg.in/telebot.v3"
@@ -23,6 +24,12 @@ func (m *Module) Register() {
 	m.Bot.Bot.Handle("/start", m.handleStart)
 	m.Bot.Bot.Handle("/version", m.handleVersion)
 	m.Bot.Bot.Handle("/help", m.handleHelp)
+	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_main"}, m.onHelpCallback)
+	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_mod"}, m.onHelpCallback)
+	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_settings"}, m.onHelpCallback)
+	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_filters"}, m.onHelpCallback)
+	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_admin"}, m.onHelpCallback)
+	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_realm"}, m.onHelpCallback)
 	m.Bot.Bot.Handle("/report", m.handleReport)
 }
 
@@ -36,45 +43,112 @@ func (m *Module) handlePing(c tele.Context) error {
 }
 
 func (m *Module) handleVersion(c tele.Context) error {
-	return c.Send(fmt.Sprintf("%s v%s", m.Cfg.BotName, m.Cfg.BotVersion))
+	return c.Send(fmt.Sprintf("**%s**\nVersion: v%s\nGo: %s\nOS: %s/%s", m.Cfg.BotName, m.Cfg.BotVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH), tele.ModeMarkdown)
 }
 
 func (m *Module) handleHelp(c tele.Context) error {
-	helpText := `**Available Commands:**
+	markup := &tele.ReplyMarkup{}
+	markup.Inline(
+		markup.Row(
+			markup.Data("Moderation", "help_mod", "mod"),
+			markup.Data("Settings", "help_settings", "settings"),
+		),
+		markup.Row(
+			markup.Data("Filters", "help_filters", "filters"),
+			markup.Data("Admin", "help_admin", "admin"),
+		),
+		markup.Row(
+			markup.Data("Realm", "help_realm", "realm"),
+		),
+	)
 
-**Moderation:**
-/kick - Kick a user (Reply)
-/ban [reason] - Ban a user (Reply)
-/tban <duration> [reason] - Temporarily ban a user (Reply)
-/mute [reason] - Mute a user (Reply)
-/tmute <duration> [reason] - Temporarily mute a user (Reply)
-/warn [reason] - Warn a user (Reply)
-/unwarn - Remove the last warning from a user (Reply)
-/resetwarns - Reset all warnings for a user (Reply)
-/warns - Check your warnings
-/approve - Approve a user (Reply)
-/unapprove - Unapprove a user (Reply)
-/promote [title] - Promote a user to admin (Reply)
-/demote - Demote an admin to member (Reply)
+	return c.Send("Welcome to Lappbot Help.\nSelect a category:", markup)
+}
+
+func (m *Module) onHelpCallback(c tele.Context) error {
+	section := c.Data()
+	markup := &tele.ReplyMarkup{}
+	backBtn := markup.Data("« Back", "help_main", "main")
+
+	var text string
+
+	switch section {
+	case "main":
+		markup.Inline(
+			markup.Row(
+				markup.Data("Moderation", "help_mod", "mod"),
+				markup.Data("Settings", "help_settings", "settings"),
+			),
+			markup.Row(
+				markup.Data("Filters", "help_filters", "filters"),
+				markup.Data("Admin", "help_admin", "admin"),
+			),
+			markup.Row(
+				markup.Data("Realm", "help_realm", "realm"),
+			),
+		)
+		err := c.Edit("Welcome to Lappbot Help.\nSelect a category:", markup)
+		if err != nil {
+			return c.Respond()
+		}
+		return nil
+
+	case "mod":
+		text = `**Moderation Commands:**
+/kick - Kick (Reply)
+/ban [reason] - Ban (Reply)
+/tban <duration> [reason] - Timed Ban (Reply)
+/mute [reason] - Mute (Reply)
+/tmute <duration> [reason] - Timed Mute (Reply)
+/skick - Silent Kick (Reply)
+/sban - Silent Ban (Reply)
+/smute - Silent Mute (Reply)
+/unban - Unban (Reply)
+/unmute - Unmute (Reply)
+/warn [reason] - Warn (Reply)
+/unwarn - Remove Warn (Reply)
+/resetwarns - Reset Warns (Reply)
+/warns - Check Warns
 /purge <count> - Delete messages
-/pin - Pin a message (Reply)
-
-**Filters:**
-/filter <trigger> <response> - Add a filter
-/stop <trigger> - Remove a filter
-/filters - List all filters
-
-**Configuration:**
-/welcome <on|off> [message] - Set welcome message
-/goodbye <on|off> [message] - Set goodbye message
-/captcha <on|off> - Enable/Disable CAPTCHA
-
-**Placeholders for Welcome/Goodbye:**
-{firstname} - User's first name (Link)
-{username} - User's username
-{userid} - User's ID
+/pin - Pin (Reply)
+/lock - Lock Group
+/unlock - Unlock Group
 `
-	return c.Send(helpText, tele.ModeMarkdown)
+	case "settings":
+		text = `**Group Settings:**
+/welcome <on|off> [msg] - Welcome Msg
+/goodbye <on|off> [msg] - Goodbye Msg
+/captcha <on|off> - CAPTCHA
+
+**Placeholders:**
+{firstname}, {username}, {userid}`
+	case "filters":
+		text = `**Filter Commands:**
+/filter <trigger> <response> - Add
+/stop <trigger> - Remove
+/filters - List`
+	case "admin":
+		text = `**Admin Commands:**
+/promote [title] - Promote
+/demote - Demote
+/approve - Exempt User
+/unapprove - Revoke Exemption
+/bl <type> <value> [action] - Blacklist
+/unbl <type> <value> - Unblacklist
+/blacklist - List Rules`
+	case "realm":
+		text = `**Realm Commands:**
+/rban [reason] - Realm Ban (Reply)
+/rmute [reason] - Realm Mute (Reply)
+(Bot Owner Only)`
+	}
+
+	markup.Inline(markup.Row(backBtn))
+	err := c.Edit(text, markup, tele.ModeMarkdown)
+	if err != nil {
+		return c.Respond()
+	}
+	return nil
 }
 
 func (m *Module) handleReport(c tele.Context) error {

@@ -86,6 +86,23 @@ func (m *Module) banUser(c tele.Context, silent bool) error {
 	return c.Send(fmt.Sprintf("%s banned.\nReason: %s", mention(target), reasonStr), tele.ModeMarkdown)
 }
 
+func (m *Module) handleUnban(c tele.Context) error {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+		return nil
+	}
+	if !c.Message().IsReply() {
+		return c.Send("Reply to a user to unban them.")
+	}
+	target := c.Message().ReplyTo.Sender
+
+	err := m.Bot.Bot.Unban(c.Chat(), target)
+	if err != nil {
+		return c.Send("Failed to unban user: " + err.Error())
+	}
+
+	return c.Send(fmt.Sprintf("%s unbanned.", mention(target)), tele.ModeMarkdown)
+}
+
 func (m *Module) handleTimedBan(c tele.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
