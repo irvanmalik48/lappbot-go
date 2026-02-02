@@ -41,8 +41,9 @@ A comprehensive blacklist system to automatically filter unwanted content.
 - Go 1.25+
 - PostgreSQL
 
-  git clone https://github.com/irvanmalik48/lappbot
-  cd lappbot
+1.  `git clone https://github.com/irvanmalik48/lappbot`
+
+2.  `cd lappbot`
 
 3.  **Configuration**
     Copy `.env.example` to `.env` (or create it) and fill in your details.

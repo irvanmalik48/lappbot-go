@@ -174,7 +174,7 @@ func (m *Module) handleRealmBan(c tele.Context) error {
 		mention(target), successCount, failCount, reasonStr))
 }
 
-func getAddtionalArgs(args []string, start int) string {
+func getAdditionalArgss(args []string, start int) string {
 	if len(args) <= start {
 		return ""
 	}
