@@ -2,6 +2,7 @@ package filters
 
 import (
 	"fmt"
+	"html"
 	"strings"
 
 	"lappbot/internal/bot"
@@ -72,7 +73,7 @@ func (m *FiltersModule) handleFilters(c tele.Context) error {
 
 	msg := "<b>Active Filters:</b>\n"
 	for _, f := range filters {
-		msg += fmt.Sprintf("• <code>%s</code>\n", f.Trigger)
+		msg += fmt.Sprintf("• <code>%s</code>\n", html.EscapeString(f.Trigger))
 	}
 
 	return c.Send(msg, tele.ModeHTML)

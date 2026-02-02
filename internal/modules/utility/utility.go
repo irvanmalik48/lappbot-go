@@ -20,9 +20,14 @@ func New(b *bot.Bot, cfg *config.Config) *Module {
 
 func (m *Module) Register() {
 	m.Bot.Bot.Handle("/ping", m.handlePing)
+	m.Bot.Bot.Handle("/start", m.handleStart)
 	m.Bot.Bot.Handle("/version", m.handleVersion)
 	m.Bot.Bot.Handle("/help", m.handleHelp)
 	m.Bot.Bot.Handle("/report", m.handleReport)
+}
+
+func (m *Module) handleStart(c tele.Context) error {
+	return c.Send(fmt.Sprintf("Hello! I am %s. Use /help to see what I can do.", m.Cfg.BotName))
 }
 
 func (m *Module) handlePing(c tele.Context) error {
@@ -40,28 +45,28 @@ func (m *Module) handleHelp(c tele.Context) error {
 /ping - Check bot latency
 /version - Check bot version
 /help - Show this message
-/report call admins (Reply)
+/report - Call admins (Reply)
 
 <b>Group Settings</b>
-/welcome <on|off> [msg] - Configure greetings
-/captcha <on|off> - Configure CAPTCHA
-/filter <trigger> <response> - Save filter
-/stop <trigger> - Delete filter
+/welcome &lt;on|off&gt; [msg] - Configure greetings
+/captcha &lt;on|off&gt; - Configure CAPTCHA
+/filter &lt;trigger&gt; &lt;response&gt; - Save filter
+/stop &lt;trigger&gt; - Delete filter
 /filters - List filters
 
 <b>Moderation</b>
 /warn [reason] - Warn a user (Reply)
 /kick [reason] - Kick a user (Reply)
 /ban [reason] - Ban a user (Reply)
-/tban <time> [reason] - Timed ban (Reply)
+/tban &lt;time&gt; [reason] - Timed ban (Reply)
 /mute [reason] - Mute a user (Reply)
-/tmute <time> [reason] - Timed mute (Reply)
+/tmute &lt;time&gt; [reason] - Timed mute (Reply)
 /purge - Purge messages (Reply)
 /pin - Pin a message (Reply)
 
 <b>Blacklist</b>
-/bl <type> <value> [action] [time] - Add to blacklist
-/unbl <type> <value> - Remove from blacklist
+/bl &lt;type&gt; &lt;value&gt; [action] [time] - Add to blacklist
+/unbl &lt;type&gt; &lt;value&gt; - Remove from blacklist
 /blacklist - List blacklist items
 
 <b>Admin & Approval</b>

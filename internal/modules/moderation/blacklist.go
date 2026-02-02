@@ -2,6 +2,7 @@ package moderation
 
 import (
 	"fmt"
+	"html"
 	"regexp"
 	"strings"
 	"time"
@@ -81,7 +82,7 @@ func (m *Module) handleBlacklistList(c tele.Context) error {
 
 	msg := "<b>Blacklist:</b>\n"
 	for _, item := range items {
-		msg += fmt.Sprintf("• [%s] %s (Action: %s)\n", item.Type, item.Value, item.Action)
+		msg += fmt.Sprintf("• [%s] %s (Action: %s)\n", html.EscapeString(item.Type), html.EscapeString(item.Value), html.EscapeString(item.Action))
 	}
 
 	return c.Send(msg, tele.ModeHTML)
