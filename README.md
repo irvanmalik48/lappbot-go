@@ -46,14 +46,11 @@ A comprehensive blacklist system to automatically filter unwanted content.
 
 2.  `cd lappbot`
 
-3.  **Configuration**
-    Copy `.env.example` to `.env` (or create it) and fill in your details.
+3.  Copy `.env.example` to `.env` (or create it) and fill in your details.
 
-4.  **Run Migrations**
-    The bot handles migrations automatically on startup using `golang-migrate`.
+4.  The bot handles migrations automatically on startup using `golang-migrate`.
 
-5.  **Build and Run**
-    ```bash
+5.  ```bash
     go mod download
     go run cmd/bot/main.go
     ```
