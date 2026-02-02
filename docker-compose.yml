@@ -9,7 +9,9 @@ services:
       - .env
     environment:
       - DB_HOST=db
+      - DB_PORT=5432
       - VALKEY_HOST=valkey
+      - VALKEY_PORT=6379
     depends_on:
       - db
       - valkey
@@ -32,6 +34,7 @@ services:
     restart: always
     ports:
       - "${VALKEY_PORT}:6379"
+    command: valkey-server --requirepass ${VALKEY_PASSWORD}
     volumes:
       - valkey_data:/data
 
