@@ -7,11 +7,6 @@
 valkey_data
 vendor
 bin
-bot
-*.exe
-*.dll
-*.so
-*.dylib
 README.md
 Dockerfile
 docker-compose.yml
