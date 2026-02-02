@@ -13,7 +13,7 @@ import (
 )
 
 func (m *Module) handleBlacklistAdd(c tele.Context) error {
-	if !m.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 
@@ -50,7 +50,7 @@ func (m *Module) handleBlacklistAdd(c tele.Context) error {
 }
 
 func (m *Module) handleBlacklistRemove(c tele.Context) error {
-	if !m.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 
@@ -90,7 +90,7 @@ func (m *Module) handleBlacklistList(c tele.Context) error {
 
 func (m *Module) CheckBlacklist(next tele.HandlerFunc) tele.HandlerFunc {
 	return func(c tele.Context) error {
-		if m.IsAdmin(c.Chat(), c.Sender()) {
+		if m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 			return next(c)
 		}
 

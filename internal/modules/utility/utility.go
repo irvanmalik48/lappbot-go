@@ -40,48 +40,41 @@ func (m *Module) handleVersion(c tele.Context) error {
 }
 
 func (m *Module) handleHelp(c tele.Context) error {
-	helpText := `
-<b>General</b>
-/ping - Check bot latency
-/version - Check bot version
-/help - Show this message
-/report - Call admins (Reply)
+	helpText := `**Available Commands:**
 
-<b>Group Settings</b>
-/welcome &lt;on|off&gt; [msg] - Configure greetings
-/captcha &lt;on|off&gt; - Configure CAPTCHA
-/filter &lt;trigger&gt; &lt;response&gt; - Save filter
-/stop &lt;trigger&gt; - Delete filter
-/filters - List filters
-
-<b>Moderation</b>
-/warn [reason] - Warn a user (Reply)
-/kick [reason] - Kick a user (Reply)
+**Moderation:**
+/kick - Kick a user (Reply)
 /ban [reason] - Ban a user (Reply)
-/tban &lt;time&gt; [reason] - Timed ban (Reply)
+/tban <duration> [reason] - Temporarily ban a user (Reply)
 /mute [reason] - Mute a user (Reply)
-/tmute &lt;time&gt; [reason] - Timed mute (Reply)
-/purge - Purge messages (Reply)
+/tmute <duration> [reason] - Temporarily mute a user (Reply)
+/warn [reason] - Warn a user (Reply)
+/unwarn - Remove the last warning from a user (Reply)
+/resetwarns - Reset all warnings for a user (Reply)
+/warns - Check your warnings
+/approve - Approve a user (Reply)
+/unapprove - Unapprove a user (Reply)
+/promote [title] - Promote a user to admin (Reply)
+/demote - Demote an admin to member (Reply)
+/purge <count> - Delete messages
 /pin - Pin a message (Reply)
 
-<b>Blacklist</b>
-/bl &lt;type&gt; &lt;value&gt; [action] [time] - Add to blacklist
-/unbl &lt;type&gt; &lt;value&gt; - Remove from blacklist
-/blacklist - List blacklist items
+**Filters:**
+/filter <trigger> <response> - Add a filter
+/stop <trigger> - Remove a filter
+/filters - List all filters
 
-<b>Admin & Approval</b>
-/promote [title] - Promote to admin
-/demote - Demote to member
-/approve - Exempt user from blacklist
-/unapprove - Revoke exemption
+**Configuration:**
+/welcome <on|off> [message] - Set welcome message
+/goodbye <on|off> [message] - Set goodbye message
+/captcha <on|off> - Enable/Disable CAPTCHA
 
-<b>Silent Actions</b>
-/skick, /sban, /smute - Silent variants
-
-<b>Realm Actions</b>
-/rban [reason], /rmute [reason] - Global ban/mute
+**Placeholders for Welcome/Goodbye:**
+{firstname} - User's first name (Link)
+{username} - User's username
+{userid} - User's ID
 `
-	return c.Send(helpText, tele.ModeHTML)
+	return c.Send(helpText, tele.ModeMarkdown)
 }
 
 func (m *Module) handleReport(c tele.Context) error {

@@ -17,14 +17,14 @@ func (m *Module) handleSilentMute(c tele.Context) error {
 }
 
 func (m *Module) muteUser(c tele.Context, silent bool) error {
-	if !m.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 	if !c.Message().IsReply() {
 		return c.Send("Reply to a user to mute them.")
 	}
 	target := c.Message().ReplyTo.Sender
-	if m.IsAdmin(c.Chat(), target) {
+	if m.Bot.IsAdmin(c.Chat(), target) {
 		return c.Send("Cannot mute an admin.")
 	}
 
@@ -52,11 +52,11 @@ func (m *Module) muteUser(c tele.Context, silent bool) error {
 		c.Delete()
 		return nil
 	}
-	return c.Send(fmt.Sprintf("%s muted.\nReason: %s", mention(target), reasonStr))
+	return c.Send(fmt.Sprintf("%s muted.\nReason: %s", mention(target), reasonStr), tele.ModeMarkdown)
 }
 
 func (m *Module) handleTimedMute(c tele.Context) error {
-	if !m.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 
@@ -68,7 +68,7 @@ func (m *Module) handleTimedMute(c tele.Context) error {
 		return c.Send("Reply to a user to mute them.")
 	}
 	target := c.Message().ReplyTo.Sender
-	if m.IsAdmin(c.Chat(), target) {
+	if m.Bot.IsAdmin(c.Chat(), target) {
 		return c.Send("Cannot mute an admin.")
 	}
 
@@ -98,11 +98,11 @@ func (m *Module) handleTimedMute(c tele.Context) error {
 		return c.Send("Error muting user: " + err.Error())
 	}
 
-	return c.Send(fmt.Sprintf("%s muted for %s.\nReason: %s", mention(target), durationStr, reasonStr))
+	return c.Send(fmt.Sprintf("%s muted for %s.\nReason: %s", mention(target), durationStr, reasonStr), tele.ModeMarkdown)
 }
 
 func (m *Module) handleRealmMute(c tele.Context) error {
-	if !m.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 
@@ -115,7 +115,7 @@ func (m *Module) handleRealmMute(c tele.Context) error {
 	}
 	target := c.Message().ReplyTo.Sender
 
-	if m.IsAdmin(c.Chat(), target) {
+	if m.Bot.IsAdmin(c.Chat(), target) {
 		return c.Send("Cannot realm mute an admin of this group.")
 	}
 
@@ -154,5 +154,5 @@ func (m *Module) handleRealmMute(c tele.Context) error {
 	}
 
 	return c.Send(fmt.Sprintf("Realm Mute Executed.\nTarget: %s\nMuted in: %d groups\nFailed in: %d groups\nReason: %s",
-		mention(target), successCount, failCount, reasonStr))
+		mention(target), successCount, failCount, reasonStr), tele.ModeMarkdown)
 }

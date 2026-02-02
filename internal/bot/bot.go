@@ -1,6 +1,8 @@
 package bot
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -37,4 +39,28 @@ func New(cfg *config.Config, store *store.Store) (*Bot, error) {
 func (b *Bot) Start() {
 	log.Printf("Bot %s started", b.Bot.Me.Username)
 	b.Bot.Start()
+}
+
+func (b *Bot) IsAdmin(chat *tele.Chat, user *tele.User) bool {
+	key := fmt.Sprintf("admin:%d:%d", chat.ID, user.ID)
+	val, err := b.Store.Valkey.Do(context.Background(), b.Store.Valkey.B().Get().Key(key).Build()).ToString()
+	if err == nil {
+		return val == "1"
+	}
+
+	member, err := b.Bot.ChatMemberOf(chat, user)
+	if err != nil {
+		return false
+	}
+
+	isAdmin := member.Role == tele.Administrator || member.Role == tele.Creator
+
+	v := "0"
+	if isAdmin {
+		v = "1"
+	}
+
+	b.Store.Valkey.Do(context.Background(), b.Store.Valkey.B().Set().Key(key).Value(v).Ex(2*time.Minute).Build())
+
+	return isAdmin
 }

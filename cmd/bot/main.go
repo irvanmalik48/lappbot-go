@@ -11,6 +11,8 @@ import (
 	"lappbot/internal/modules/moderation"
 	"lappbot/internal/modules/utility"
 	"lappbot/internal/store"
+
+	tele "gopkg.in/telebot.v3"
 )
 
 func main() {
@@ -45,6 +47,23 @@ func main() {
 
 	filtersModule := filters.NewFilters(b, db)
 	filtersModule.Register()
+
+	b.Bot.Handle(tele.OnUserJoined, func(c tele.Context) error {
+		if err := greetingModule.OnUserJoined(c); err != nil {
+			log.Println("Greeting error:", err)
+		}
+		if err := captchaModule.OnUserJoined(c); err != nil {
+			log.Println("Captcha error:", err)
+		}
+		return nil
+	})
+
+	b.Bot.Handle(tele.OnUserLeft, func(c tele.Context) error {
+		if err := greetingModule.OnUserLeft(c); err != nil {
+			log.Println("Goodbye error:", err)
+		}
+		return nil
+	})
 
 	b.Start()
 }

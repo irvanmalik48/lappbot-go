@@ -17,14 +17,14 @@ func (m *Module) handleSilentKick(c tele.Context) error {
 }
 
 func (m *Module) kickUser(c tele.Context, silent bool) error {
-	if !m.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 	if !c.Message().IsReply() {
 		return c.Send("Reply to a user to kick them.")
 	}
 	target := c.Message().ReplyTo.Sender
-	if m.IsAdmin(c.Chat(), target) {
+	if m.Bot.IsAdmin(c.Chat(), target) {
 		return c.Send("Cannot kick an admin.")
 	}
 
@@ -43,7 +43,7 @@ func (m *Module) kickUser(c tele.Context, silent bool) error {
 		c.Delete()
 		return nil
 	}
-	return c.Send(fmt.Sprintf("%s kicked.\nReason: %s", mention(target), reasonStr))
+	return c.Send(fmt.Sprintf("%s kicked.\nReason: %s", mention(target), reasonStr), tele.ModeMarkdown)
 }
 
 func (m *Module) handleBan(c tele.Context) error {
@@ -55,14 +55,14 @@ func (m *Module) handleSilentBan(c tele.Context) error {
 }
 
 func (m *Module) banUser(c tele.Context, silent bool) error {
-	if !m.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 	if !c.Message().IsReply() {
 		return c.Send("Reply to a user to ban them.")
 	}
 	target := c.Message().ReplyTo.Sender
-	if m.IsAdmin(c.Chat(), target) {
+	if m.Bot.IsAdmin(c.Chat(), target) {
 		return c.Send("Cannot ban an admin.")
 	}
 
@@ -83,11 +83,11 @@ func (m *Module) banUser(c tele.Context, silent bool) error {
 		c.Delete()
 		return nil
 	}
-	return c.Send(fmt.Sprintf("%s banned.\nReason: %s", mention(target), reasonStr))
+	return c.Send(fmt.Sprintf("%s banned.\nReason: %s", mention(target), reasonStr), tele.ModeMarkdown)
 }
 
 func (m *Module) handleTimedBan(c tele.Context) error {
-	if !m.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 
@@ -99,7 +99,7 @@ func (m *Module) handleTimedBan(c tele.Context) error {
 		return c.Send("Reply to a user to ban them.")
 	}
 	target := c.Message().ReplyTo.Sender
-	if m.IsAdmin(c.Chat(), target) {
+	if m.Bot.IsAdmin(c.Chat(), target) {
 		return c.Send("Cannot ban an admin.")
 	}
 
@@ -122,11 +122,11 @@ func (m *Module) handleTimedBan(c tele.Context) error {
 		return c.Send("Error banning user: " + err.Error())
 	}
 
-	return c.Send(fmt.Sprintf("%s banned for %s.\nReason: %s", mention(target), durationStr, reasonStr))
+	return c.Send(fmt.Sprintf("%s banned for %s.\nReason: %s", mention(target), durationStr, reasonStr), tele.ModeMarkdown)
 }
 
 func (m *Module) handleRealmBan(c tele.Context) error {
-	if !m.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 
@@ -139,7 +139,7 @@ func (m *Module) handleRealmBan(c tele.Context) error {
 	}
 	target := c.Message().ReplyTo.Sender
 
-	if m.IsAdmin(c.Chat(), target) {
+	if m.Bot.IsAdmin(c.Chat(), target) {
 		return c.Send("Cannot realm ban an admin of this group.")
 	}
 
@@ -171,7 +171,7 @@ func (m *Module) handleRealmBan(c tele.Context) error {
 	}
 
 	return c.Send(fmt.Sprintf("Realm Ban Executed.\nTarget: %s\nBanned in: %d groups\nFailed in: %d groups\nReason: %s",
-		mention(target), successCount, failCount, reasonStr))
+		mention(target), successCount, failCount, reasonStr), tele.ModeMarkdown)
 }
 
 func getAdditionalArgss(args []string, start int) string {

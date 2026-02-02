@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"lappbot/internal/bot"
 	"lappbot/internal/store"
-	"time"
 
 	tele "gopkg.in/telebot.v3"
 )
@@ -20,7 +19,9 @@ func New(b *bot.Bot, s *store.Store) *Module {
 }
 
 func (m *Module) Register() {
+	m.Bot.Bot.Handle(&tele.Btn{Unique: "btn_remove_warn"}, m.onRemoveWarn)
 	m.Bot.Bot.Handle("/warn", m.handleWarn)
+	m.Bot.Bot.Handle("/unwarn", m.handleUnwarn)
 	m.Bot.Bot.Handle("/resetwarns", m.handleResetWarns)
 	m.Bot.Bot.Handle("/warns", m.handleMyWarns)
 
@@ -55,30 +56,6 @@ func (m *Module) Register() {
 	m.Bot.Bot.Use(m.CheckBlacklist)
 }
 
-func (m *Module) IsAdmin(chat *tele.Chat, user *tele.User) bool {
-	key := fmt.Sprintf("admin:%d:%d", chat.ID, user.ID)
-	val, err := m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Get().Key(key).Build()).ToString()
-	if err == nil {
-		return val == "1"
-	}
-
-	member, err := m.Bot.Bot.ChatMemberOf(chat, user)
-	if err != nil {
-		return false
-	}
-
-	isAdmin := member.Role == tele.Administrator || member.Role == tele.Creator
-
-	v := "0"
-	if isAdmin {
-		v = "1"
-	}
-
-	m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Set().Key(key).Value(v).Ex(2*time.Minute).Build())
-
-	return isAdmin
-}
-
 func (m *Module) handleRefreshCache(c tele.Context) error {
 	if c.Sender().ID != m.Bot.Cfg.BotOwnerID {
 		return c.Send("This command is restricted to the bot owner.")
@@ -90,6 +67,26 @@ func (m *Module) handleRefreshCache(c tele.Context) error {
 	}
 
 	return c.Send("Cache refreshed successfully.")
+}
+
+func (m *Module) onRemoveWarn(c tele.Context) error {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+		return c.Respond(&tele.CallbackResponse{Text: "Only admins can use this button.", ShowAlert: true})
+	}
+
+	targetIDStr := c.Data()
+	var targetID int64
+	fmt.Sscanf(targetIDStr, "%d", &targetID)
+
+	err := m.Store.RemoveLastWarn(targetID, c.Chat().ID)
+	if err != nil {
+		return c.Respond(&tele.CallbackResponse{Text: "Failed to remove warn."})
+	}
+
+	count, _ := m.Store.GetWarnCount(targetID, c.Chat().ID)
+
+	c.Edit(fmt.Sprintf("Warn removed by %s.\nTotal Warns: %d/3", mention(c.Sender()), count), tele.ModeMarkdown)
+	return c.Respond(&tele.CallbackResponse{Text: "Warn removed!"})
 }
 
 func mention(u *tele.User) string {

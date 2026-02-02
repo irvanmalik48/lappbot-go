@@ -8,7 +8,7 @@ import (
 )
 
 func (m *Module) handleApprove(c tele.Context) error {
-	if !m.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 	if !c.Message().IsReply() {
@@ -21,11 +21,11 @@ func (m *Module) handleApprove(c tele.Context) error {
 		return c.Send("Failed to approve user: " + err.Error())
 	}
 
-	return c.Send(fmt.Sprintf("%s is now approved.", mention(target)))
+	return c.Send(fmt.Sprintf("%s is now approved.", mention(target)), tele.ModeMarkdown)
 }
 
 func (m *Module) handleUnapprove(c tele.Context) error {
-	if !m.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 	if !c.Message().IsReply() {
@@ -38,11 +38,11 @@ func (m *Module) handleUnapprove(c tele.Context) error {
 		return c.Send("Failed to unapprove user: " + err.Error())
 	}
 
-	return c.Send(fmt.Sprintf("%s is no longer approved.", mention(target)))
+	return c.Send(fmt.Sprintf("%s is no longer approved.", mention(target)), tele.ModeMarkdown)
 }
 
 func (m *Module) handlePromote(c tele.Context) error {
-	if !m.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 	if !c.Message().IsReply() {
@@ -79,11 +79,11 @@ func (m *Module) handlePromote(c tele.Context) error {
 		return c.Send("Failed to promote user: " + err.Error())
 	}
 
-	return c.Send(fmt.Sprintf("%s promoted to admin with title '%s'.", mention(target), title))
+	return c.Send(fmt.Sprintf("%s promoted to admin with title '%s'.", mention(target), title), tele.ModeMarkdown)
 }
 
 func (m *Module) handleDemote(c tele.Context) error {
-	if !m.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 	if !c.Message().IsReply() {
@@ -113,5 +113,5 @@ func (m *Module) handleDemote(c tele.Context) error {
 		return c.Send("Failed to demote user: " + err.Error())
 	}
 
-	return c.Send(fmt.Sprintf("%s demoted to member.", mention(target)))
+	return c.Send(fmt.Sprintf("%s demoted to member.", mention(target)), tele.ModeMarkdown)
 }

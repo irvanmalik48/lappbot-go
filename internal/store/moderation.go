@@ -14,15 +14,18 @@ func (s *Store) AddWarn(userID, groupID int64, reason string, createdBy int64) (
 	if err != nil {
 		return 0, err
 	}
-	q := `WITH inserted AS (
-			INSERT INTO warns (id, user_id, group_id, reason, created_by) 
-			VALUES ($1, $2, $3, $4, $5)
-			RETURNING user_id
-		)
-		SELECT COUNT(*) FROM warns WHERE user_id = $2 AND group_id = $3`
+	qInsert := `INSERT INTO warns (id, user_id, group_id, reason, created_by) 
+			VALUES ($1, $2, $3, $4, $5)`
+
+	_, err = s.db.Exec(context.Background(), qInsert, id, userID, groupID, reason, createdBy)
+	if err != nil {
+		return 0, err
+	}
+
+	qCount := `SELECT COUNT(*) FROM warns WHERE user_id = $1 AND group_id = $2`
 
 	var count int
-	err = s.db.QueryRow(context.Background(), q, id, userID, groupID, reason, createdBy).Scan(&count)
+	err = s.db.QueryRow(context.Background(), qCount, userID, groupID).Scan(&count)
 	return count, err
 }
 
@@ -35,6 +38,15 @@ func (s *Store) GetWarnCount(userID, groupID int64) (int, error) {
 
 func (s *Store) ResetWarns(userID, groupID int64) error {
 	q := `DELETE FROM warns WHERE user_id = $1 AND group_id = $2`
+	_, err := s.db.Exec(context.Background(), q, userID, groupID)
+	return err
+}
+
+func (s *Store) RemoveLastWarn(userID, groupID int64) error {
+	q := `DELETE FROM warns WHERE id IN (
+		SELECT id FROM warns WHERE user_id = $1 AND group_id = $2 
+		ORDER BY created_at DESC LIMIT 1
+	)`
 	_, err := s.db.Exec(context.Background(), q, userID, groupID)
 	return err
 }

@@ -5,7 +5,7 @@ import (
 )
 
 func (m *Module) handlePin(c tele.Context) error {
-	if !m.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 	if !c.Message().IsReply() {

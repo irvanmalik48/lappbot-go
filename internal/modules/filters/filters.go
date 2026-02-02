@@ -29,6 +29,9 @@ func (m *FiltersModule) Register() {
 }
 
 func (m *FiltersModule) handleFilter(c tele.Context) error {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+		return c.Send("You must be an admin to use this command.")
+	}
 	args := c.Args()
 	if len(args) < 2 {
 		return c.Send("Usage: /filter <trigger> <response>")
@@ -46,6 +49,9 @@ func (m *FiltersModule) handleFilter(c tele.Context) error {
 }
 
 func (m *FiltersModule) handleStop(c tele.Context) error {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+		return c.Send("You must be an admin to use this command.")
+	}
 	args := c.Args()
 	if len(args) < 1 {
 		return c.Send("Usage: /stop <trigger>")

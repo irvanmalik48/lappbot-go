@@ -7,7 +7,7 @@ import (
 )
 
 func (m *Module) handleWarn(c tele.Context) error {
-	if !m.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 
@@ -16,7 +16,7 @@ func (m *Module) handleWarn(c tele.Context) error {
 	}
 
 	target := c.Message().ReplyTo.Sender
-	if m.IsAdmin(c.Chat(), target) {
+	if m.Bot.IsAdmin(c.Chat(), target) {
 		return c.Send("Cannot warn an admin.")
 	}
 
@@ -45,13 +45,40 @@ func (m *Module) handleWarn(c tele.Context) error {
 			m.Bot.Bot.Unban(c.Chat(), target)
 			m.Store.ResetWarns(target.ID, c.Chat().ID)
 		}
+		return c.Send(msg, tele.ModeMarkdown)
 	}
 
-	return c.Send(msg)
+	markup := &tele.ReplyMarkup{}
+	btnRemoveWarn := markup.Data("Remove Warn", "btn_remove_warn", fmt.Sprintf("%d", target.ID))
+	markup.Inline(markup.Row(btnRemoveWarn))
+
+	return c.Send(msg, markup, tele.ModeMarkdown)
+}
+
+func (m *Module) handleUnwarn(c tele.Context) error {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+		return nil
+	}
+	if !c.Message().IsReply() {
+		return c.Send("Reply to a user to remove their last warn.")
+	}
+	target := c.Message().ReplyTo.Sender
+
+	err := m.Store.RemoveLastWarn(target.ID, c.Chat().ID)
+	if err != nil {
+		return c.Send("Error removing warn: " + err.Error())
+	}
+
+	count, err := m.Store.GetWarnCount(target.ID, c.Chat().ID)
+	if err != nil {
+		return c.Send("Warn removed, but failed to get new count.")
+	}
+
+	return c.Send(fmt.Sprintf("Warn removed for %s.\nTotal Warns: %d/3", mention(target), count), tele.ModeMarkdown)
 }
 
 func (m *Module) handleResetWarns(c tele.Context) error {
-	if !m.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 	if !c.Message().IsReply() {
@@ -63,7 +90,7 @@ func (m *Module) handleResetWarns(c tele.Context) error {
 	if err != nil {
 		return c.Send("Error resetting warns.")
 	}
-	return c.Send(fmt.Sprintf("Warns reset for %s.", mention(target)))
+	return c.Send(fmt.Sprintf("Warns reset for %s.", mention(target)), tele.ModeMarkdown)
 }
 
 func (m *Module) handleMyWarns(c tele.Context) error {
