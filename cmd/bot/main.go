@@ -5,6 +5,8 @@ import (
 
 	"lappbot/internal/bot"
 	"lappbot/internal/config"
+	"lappbot/internal/modules/antiflood"
+	"lappbot/internal/modules/antiraid"
 	"lappbot/internal/modules/captcha"
 	"lappbot/internal/modules/filters"
 	"lappbot/internal/modules/greeting"
@@ -47,6 +49,12 @@ func main() {
 
 	filtersModule := filters.NewFilters(b, db)
 	filtersModule.Register()
+
+	antiraidModule := antiraid.New(b, db)
+	antiraidModule.Register()
+
+	antifloodModule := antiflood.New(b, db)
+	antifloodModule.Register()
 
 	b.Bot.Handle(tele.OnUserJoined, func(c tele.Context) error {
 		if err := greetingModule.OnUserJoined(c); err != nil {

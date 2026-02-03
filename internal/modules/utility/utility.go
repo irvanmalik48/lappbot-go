@@ -30,6 +30,7 @@ func (m *Module) Register() {
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_settings"}, m.onHelpCallback)
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_filters"}, m.onHelpCallback)
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_admin"}, m.onHelpCallback)
+	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_antispam"}, m.onHelpCallback)
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_realm"}, m.onHelpCallback)
 	m.Bot.Bot.Handle("/report", m.handleReport)
 }
@@ -60,6 +61,7 @@ func (m *Module) handleHelp(c tele.Context) error {
 		),
 		markup.Row(
 			markup.Data("Realm", "help_realm", "realm"),
+			markup.Data("Anti-Spam", "help_antispam", "antispam"),
 		),
 	)
 
@@ -86,6 +88,7 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 			),
 			markup.Row(
 				markup.Data("Realm", "help_realm", "realm"),
+				markup.Data("Anti-Spam", "help_antispam", "antispam"),
 			),
 		)
 		err := c.Edit("Welcome to Lappbot Help.\nSelect a category:", markup)
@@ -113,8 +116,20 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 /purge <count> - Delete messages
 /pin - Pin (Reply)
 /lock - Lock Group
-/unlock - Unlock Group
-`
+/unlock - Unlock Group`
+	case "antispam":
+		text = `**Anti-Raid:**
+/antiraid <time/off> - Toggle
+/raidtime <time> - Set duration
+/raidactiontime <time> - Ban duration
+/autoantiraid <count> - Auto-enable
+
+**Anti-Flood:**
+/flood - Settings
+/setflood <count> - Consecutive limit
+/setfloodtimer <count> <time> - Timed limit
+/floodmode <action> [time] - Action
+/clearflood <yes/no> - Delete flood`
 	case "settings":
 		text = `**Group Settings:**
 /welcome <on|off|text> [msg] - Welcome Msg
