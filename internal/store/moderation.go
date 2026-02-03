@@ -42,6 +42,12 @@ func (s *Store) ResetWarns(userID, groupID int64) error {
 	return err
 }
 
+func (s *Store) ResetAllWarns(groupID int64) error {
+	q := `DELETE FROM warns WHERE group_id = $1`
+	_, err := s.db.Exec(context.Background(), q, groupID)
+	return err
+}
+
 func (s *Store) RemoveLastWarn(userID, groupID int64) error {
 	q := `DELETE FROM warns WHERE id IN (
 		SELECT id FROM warns WHERE user_id = $1 AND group_id = $2 
@@ -49,6 +55,13 @@ func (s *Store) RemoveLastWarn(userID, groupID int64) error {
 	)`
 	_, err := s.db.Exec(context.Background(), q, userID, groupID)
 	return err
+}
+
+func (s *Store) GetActiveWarns(userID, groupID int64, since time.Time) (int, error) {
+	q := `SELECT COUNT(*) FROM warns WHERE user_id = $1 AND group_id = $2 AND created_at >= $3`
+	var count int
+	err := s.db.QueryRow(context.Background(), q, userID, groupID, since).Scan(&count)
+	return count, err
 }
 
 func (s *Store) BanUser(userID, groupID int64, until time.Time, reason string, createdBy int64, banType string) error {

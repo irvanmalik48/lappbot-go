@@ -31,6 +31,7 @@ func (m *Module) Register() {
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_filters"}, m.onHelpCallback)
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_admin"}, m.onHelpCallback)
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_antispam"}, m.onHelpCallback)
+	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_warns"}, m.onHelpCallback)
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_realm"}, m.onHelpCallback)
 	m.Bot.Bot.Handle("/report", m.handleReport)
 }
@@ -57,6 +58,7 @@ func (m *Module) handleHelp(c tele.Context) error {
 		),
 		markup.Row(
 			markup.Data("Filters", "help_filters", "filters"),
+			markup.Data("Warnings", "help_warns", "warns"),
 			markup.Data("Admin", "help_admin", "admin"),
 		),
 		markup.Row(
@@ -84,6 +86,7 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 			),
 			markup.Row(
 				markup.Data("Filters", "help_filters", "filters"),
+				markup.Data("Warnings", "help_warns", "warns"),
 				markup.Data("Admin", "help_admin", "admin"),
 			),
 			markup.Row(
@@ -109,14 +112,25 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 /smute - Silent Mute (Reply)
 /unban - Unban (Reply)
 /unmute - Unmute (Reply)
-/warn [reason] - Warn (Reply)
-/unwarn - Remove Warn (Reply)
-/resetwarns - Reset Warns (Reply)
-/warns - Check Warns
 /purge <count> - Delete messages
 /pin - Pin (Reply)
 /lock - Lock Group
 /unlock - Unlock Group`
+
+	case "warns":
+		text = `**Warning Commands:**
+/warn [reason] - Warn (Reply)
+/dwarn [reason] - Warn & Delete
+/swarn [reason] - Silent Warn
+/rmwarn - Remove Last Warn (Reply)
+/resetwarn - Reset Warns (Reply)
+/resetallwarns - Reset Chat Warns
+/warns - Check Warns
+/warnings - Check Settings
+/warnlimit <number> - Set Limit
+/warnmode <action> - Set Action
+/warntime <duration> - Set Duration`
+
 	case "antispam":
 		text = `**Anti-Raid:**
 /antiraid <time/off> - Toggle

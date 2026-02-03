@@ -26,11 +26,19 @@ func New(b *bot.Bot, s *store.Store) *Module {
 }
 
 func (m *Module) Register() {
-	m.Bot.Bot.Handle(&tele.Btn{Unique: "btn_remove_warn"}, m.onRemoveWarn)
 	m.Bot.Bot.Handle("/warn", m.handleWarn)
-	m.Bot.Bot.Handle("/unwarn", m.handleUnwarn)
-	m.Bot.Bot.Handle("/resetwarns", m.handleResetWarns)
+	m.Bot.Bot.Handle("/dwarn", m.handleDWarn)
+	m.Bot.Bot.Handle("/swarn", m.handleSWarn)
+	m.Bot.Bot.Handle("/unwarn", m.handleRmWarn)
+	m.Bot.Bot.Handle("/rmwarn", m.handleRmWarn)
+	m.Bot.Bot.Handle("/resetwarn", m.handleResetWarns)
+	m.Bot.Bot.Handle("/resetallwarns", m.handleResetAllWarns)
 	m.Bot.Bot.Handle("/warns", m.handleMyWarns)
+	m.Bot.Bot.Handle("/warnings", m.handleWarnings)
+	m.Bot.Bot.Handle("/warnlimit", m.handleWarnLimit)
+	m.Bot.Bot.Handle("/warnmode", m.handleWarnMode)
+	m.Bot.Bot.Handle("/warntime", m.handleWarnTime)
+	m.Bot.Bot.Handle(&tele.Btn{Unique: "btn_remove_warn"}, m.onRemoveWarnBtn)
 
 	m.Bot.Bot.Handle("/kick", m.handleKick)
 	m.Bot.Bot.Handle("/skick", m.handleSilentKick)
@@ -78,26 +86,6 @@ func (m *Module) handleRefreshCache(c tele.Context) error {
 	}
 
 	return c.Send("Cache refreshed successfully.")
-}
-
-func (m *Module) onRemoveWarn(c tele.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
-		return c.Respond(&tele.CallbackResponse{Text: "Only admins can use this button.", ShowAlert: true})
-	}
-
-	targetIDStr := c.Data()
-	var targetID int64
-	fmt.Sscanf(targetIDStr, "%d", &targetID)
-
-	err := m.Store.RemoveLastWarn(targetID, c.Chat().ID)
-	if err != nil {
-		return c.Respond(&tele.CallbackResponse{Text: "Failed to remove warn."})
-	}
-
-	count, _ := m.Store.GetWarnCount(targetID, c.Chat().ID)
-
-	c.Edit(fmt.Sprintf("Warn removed by %s.\nTotal Warns: %d/3", mention(c.Sender()), count), tele.ModeMarkdown)
-	return c.Respond(&tele.CallbackResponse{Text: "Warn removed!"})
 }
 
 func mention(u *tele.User) string {
