@@ -42,9 +42,9 @@ A comprehensive blacklist system to automatically filter unwanted content.
 - PostgreSQL
 - Valkey
 
-1.  `git clone https://github.com/irvanmalik48/lappbot`
+1.  `git clone https://github.com/irvanmalik48/lappbot-go`
 
-2.  `cd lappbot`
+2.  `cd lappbot-go`
 
 3.  Copy `.env.example` to `.env` (or create it) and fill in your details.
 
