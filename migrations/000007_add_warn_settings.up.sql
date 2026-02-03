@@ -1,0 +1,3 @@
+ALTER TABLE groups ADD COLUMN warn_limit INT DEFAULT 3;
+ALTER TABLE groups ADD COLUMN warn_action VARCHAR(255) DEFAULT 'kick';
+ALTER TABLE groups ADD COLUMN warn_duration VARCHAR(255) DEFAULT '1w';
