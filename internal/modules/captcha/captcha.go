@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"lappbot/internal/bot"
+	"lappbot/internal/modules/utility"
 	"lappbot/internal/store"
 
 	"github.com/steambap/captcha"
@@ -115,7 +116,11 @@ func (m *Module) OnUserJoined(c tele.Context) error {
 	}
 
 	photo := &tele.Photo{File: tele.FromReader(buf)}
-	photo.Caption = "Please type the code in the image to verify you are human."
+	if group.GreetingEnabled && group.GreetingMessage != "" {
+		photo.Caption = utility.ReplacePlaceholders(group.GreetingMessage, c.Sender())
+	} else {
+		photo.Caption = "Please type the code in the image to verify you are human."
+	}
 
 	msg, err := c.Bot().Send(c.Chat(), photo, tele.ModeMarkdown)
 	if err != nil {

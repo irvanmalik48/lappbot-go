@@ -69,18 +69,36 @@ func (s *Store) CreateGroup(telegramID int64, title string) error {
 	return err
 }
 
-func (s *Store) UpdateGroupGreeting(telegramID int64, enabled bool, message string) error {
-	q := `UPDATE groups SET greeting_enabled = $1, greeting_message = $2 WHERE telegram_id = $3`
-	_, err := s.db.Exec(context.Background(), q, enabled, message, telegramID)
+func (s *Store) SetGreetingStatus(telegramID int64, enabled bool) error {
+	q := `UPDATE groups SET greeting_enabled = $1 WHERE telegram_id = $2`
+	_, err := s.db.Exec(context.Background(), q, enabled, telegramID)
 	if err == nil {
 		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("group:%d", telegramID)).Build())
 	}
 	return err
 }
 
-func (s *Store) UpdateGroupGoodbye(telegramID int64, enabled bool, message string) error {
-	q := `UPDATE groups SET goodbye_enabled = $1, goodbye_message = $2 WHERE telegram_id = $3`
-	_, err := s.db.Exec(context.Background(), q, enabled, message, telegramID)
+func (s *Store) SetGreetingMessage(telegramID int64, message string) error {
+	q := `UPDATE groups SET greeting_message = $1 WHERE telegram_id = $2`
+	_, err := s.db.Exec(context.Background(), q, message, telegramID)
+	if err == nil {
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("group:%d", telegramID)).Build())
+	}
+	return err
+}
+
+func (s *Store) SetGoodbyeStatus(telegramID int64, enabled bool) error {
+	q := `UPDATE groups SET goodbye_enabled = $1 WHERE telegram_id = $2`
+	_, err := s.db.Exec(context.Background(), q, enabled, telegramID)
+	if err == nil {
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("group:%d", telegramID)).Build())
+	}
+	return err
+}
+
+func (s *Store) SetGoodbyeMessage(telegramID int64, message string) error {
+	q := `UPDATE groups SET goodbye_message = $1 WHERE telegram_id = $2`
+	_, err := s.db.Exec(context.Background(), q, message, telegramID)
 	if err == nil {
 		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("group:%d", telegramID)).Build())
 	}

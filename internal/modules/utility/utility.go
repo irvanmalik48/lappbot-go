@@ -5,6 +5,7 @@ import (
 	"lappbot/internal/bot"
 	"lappbot/internal/config"
 	"runtime"
+	"strings"
 	"time"
 
 	tele "gopkg.in/telebot.v3"
@@ -116,8 +117,8 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 `
 	case "settings":
 		text = `**Group Settings:**
-/welcome <on|off> [msg] - Welcome Msg
-/goodbye <on|off> [msg] - Goodbye Msg
+/welcome <on|off|text> [msg] - Welcome Msg
+/goodbye <on|off|text> [msg] - Goodbye Msg
 /captcha <on|off> - CAPTCHA
 
 **Placeholders:**
@@ -190,4 +191,11 @@ func (m *Module) handleReport(c tele.Context) error {
 		return c.Send("Report failed (Admins haven't started bot).")
 	}
 	return c.Send("Report sent to admins.")
+}
+
+func ReplacePlaceholders(msg string, user *tele.User) string {
+	msg = strings.ReplaceAll(msg, "{firstname}", fmt.Sprintf("[%s](tg://user?id=%d)", user.FirstName, user.ID))
+	msg = strings.ReplaceAll(msg, "{username}", user.Username)
+	msg = strings.ReplaceAll(msg, "{userid}", fmt.Sprintf("%d", user.ID))
+	return msg
 }

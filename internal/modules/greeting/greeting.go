@@ -1,8 +1,8 @@
 package greeting
 
 import (
-	"fmt"
 	"lappbot/internal/bot"
+	"lappbot/internal/modules/utility"
 	"lappbot/internal/store"
 	"strings"
 
@@ -41,7 +41,7 @@ func (m *Module) OnUserJoined(c tele.Context) error {
 	}
 
 	if group.GreetingEnabled && group.GreetingMessage != "" {
-		return c.Send(m.replacePlaceholders(group.GreetingMessage, c.Sender()), tele.ModeMarkdown)
+		return c.Send(utility.ReplacePlaceholders(group.GreetingMessage, c.Sender()), tele.ModeMarkdown)
 	}
 
 	return nil
@@ -57,17 +57,10 @@ func (m *Module) OnUserLeft(c tele.Context) error {
 	}
 
 	if group.GoodbyeEnabled && group.GoodbyeMessage != "" {
-		return c.Send(m.replacePlaceholders(group.GoodbyeMessage, c.Sender()), tele.ModeMarkdown)
+		return c.Send(utility.ReplacePlaceholders(group.GoodbyeMessage, c.Sender()), tele.ModeMarkdown)
 	}
 
 	return nil
-}
-
-func (m *Module) replacePlaceholders(msg string, user *tele.User) string {
-	msg = strings.ReplaceAll(msg, "{firstname}", fmt.Sprintf("[%s](tg://user?id=%d)", user.FirstName, user.ID))
-	msg = strings.ReplaceAll(msg, "{username}", user.Username)
-	msg = strings.ReplaceAll(msg, "{userid}", fmt.Sprintf("%d", user.ID))
-	return msg
 }
 
 func (m *Module) handleWelcomeCommand(c tele.Context) error {
@@ -77,31 +70,47 @@ func (m *Module) handleWelcomeCommand(c tele.Context) error {
 
 	args := c.Args()
 	if len(args) == 0 {
-		return c.Send("Usage: /welcome <on|off> [message]")
+		return c.Send("Usage: /welcome <on|off|text> [message]")
 	}
 
 	switch args[0] {
 	case "on":
-		if len(args) < 2 {
-			return c.Send("Please provide a welcome message.")
-		}
-		msg := ""
-		for i := 1; i < len(args); i++ {
-			msg += args[i] + " "
-		}
-		err := m.Store.UpdateGroupGreeting(c.Chat().ID, true, msg)
+		err := m.Store.SetGreetingStatus(c.Chat().ID, true)
 		if err != nil {
 			return c.Send("Error updating setting: " + err.Error())
 		}
 		return c.Send("Welcome message enabled.")
 	case "off":
-		err := m.Store.UpdateGroupGreeting(c.Chat().ID, false, "")
+		err := m.Store.SetGreetingStatus(c.Chat().ID, false)
 		if err != nil {
 			return c.Send("Error updating setting: " + err.Error())
 		}
 		return c.Send("Welcome message disabled.")
+	case "text":
+		msg := ""
+		if len(args) < 2 {
+			if c.Message().IsReply() {
+				msg = c.Message().ReplyTo.Text
+			} else {
+				return c.Send("Please provide a welcome message or reply to one.")
+			}
+		} else {
+			for i := 1; i < len(args); i++ {
+				msg += args[i] + " "
+			}
+		}
+		msg = strings.TrimSpace(msg)
+		if msg == "" {
+			return c.Send("Message cannot be empty.")
+		}
+
+		err := m.Store.SetGreetingMessage(c.Chat().ID, msg)
+		if err != nil {
+			return c.Send("Error updating setting: " + err.Error())
+		}
+		return c.Send("Welcome message set.")
 	default:
-		return c.Send("Invalid argument. Use 'on' or 'off'.")
+		return c.Send("Invalid argument. Use 'on', 'off', or 'text'.")
 	}
 }
 
@@ -112,30 +121,46 @@ func (m *Module) handleGoodbyeCommand(c tele.Context) error {
 
 	args := c.Args()
 	if len(args) == 0 {
-		return c.Send("Usage: /goodbye <on|off> [message]")
+		return c.Send("Usage: /goodbye <on|off|text> [message]")
 	}
 
 	switch args[0] {
 	case "on":
-		if len(args) < 2 {
-			return c.Send("Please provide a goodbye message.")
-		}
-		msg := ""
-		for i := 1; i < len(args); i++ {
-			msg += args[i] + " "
-		}
-		err := m.Store.UpdateGroupGoodbye(c.Chat().ID, true, msg)
+		err := m.Store.SetGoodbyeStatus(c.Chat().ID, true)
 		if err != nil {
 			return c.Send("Error updating setting: " + err.Error())
 		}
 		return c.Send("Goodbye message enabled.")
 	case "off":
-		err := m.Store.UpdateGroupGoodbye(c.Chat().ID, false, "")
+		err := m.Store.SetGoodbyeStatus(c.Chat().ID, false)
 		if err != nil {
 			return c.Send("Error updating setting: " + err.Error())
 		}
 		return c.Send("Goodbye message disabled.")
+	case "text":
+		msg := ""
+		if len(args) < 2 {
+			if c.Message().IsReply() {
+				msg = c.Message().ReplyTo.Text
+			} else {
+				return c.Send("Please provide a goodbye message or reply to one.")
+			}
+		} else {
+			for i := 1; i < len(args); i++ {
+				msg += args[i] + " "
+			}
+		}
+		msg = strings.TrimSpace(msg)
+		if msg == "" {
+			return c.Send("Message cannot be empty.")
+		}
+
+		err := m.Store.SetGoodbyeMessage(c.Chat().ID, msg)
+		if err != nil {
+			return c.Send("Error updating setting: " + err.Error())
+		}
+		return c.Send("Goodbye message set.")
 	default:
-		return c.Send("Invalid argument. Use 'on' or 'off'.")
+		return c.Send("Invalid argument. Use 'on', 'off', or 'text'.")
 	}
 }
