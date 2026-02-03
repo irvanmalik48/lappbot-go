@@ -12,15 +12,23 @@ import (
 )
 
 type Group struct {
-	ID              string
-	TelegramID      int64
-	Title           string
-	GreetingEnabled bool
-	GreetingMessage string
-	GoodbyeEnabled  bool
-	GoodbyeMessage  string
-	CaptchaEnabled  bool
-	CreatedAt       interface{}
+	ID                        string
+	TelegramID                int64
+	Title                     string
+	GreetingEnabled           bool
+	GreetingMessage           string
+	GoodbyeEnabled            bool
+	GoodbyeMessage            string
+	CaptchaEnabled            bool
+	AntiraidUntil             *time.Time
+	RaidActionTime            string
+	AutoAntiraidThreshold     int
+	AntifloodConsecutiveLimit int
+	AntifloodTimerLimit       int
+	AntifloodTimerDuration    string
+	AntifloodAction           string
+	AntifloodDelete           bool
+	CreatedAt                 interface{}
 }
 
 func (s *Store) GetGroup(telegramID int64) (*Group, error) {
@@ -33,12 +41,16 @@ func (s *Store) GetGroup(telegramID int64) (*Group, error) {
 		}
 	}
 
-	q := `SELECT id, telegram_id, title, greeting_enabled, greeting_message, goodbye_enabled, goodbye_message, captcha_enabled 
+	q := `SELECT id, telegram_id, title, greeting_enabled, greeting_message, goodbye_enabled, goodbye_message, captcha_enabled,
+                 antiraid_until, raid_action_time, auto_antiraid_threshold,
+                 antiflood_consecutive_limit, antiflood_timer_limit, antiflood_timer_duration, antiflood_action, antiflood_delete
           FROM groups WHERE telegram_id = $1`
 
 	var g Group
 	err = s.db.QueryRow(context.Background(), q, telegramID).Scan(
 		&g.ID, &g.TelegramID, &g.Title, &g.GreetingEnabled, &g.GreetingMessage, &g.GoodbyeEnabled, &g.GoodbyeMessage, &g.CaptchaEnabled,
+		&g.AntiraidUntil, &g.RaidActionTime, &g.AutoAntiraidThreshold,
+		&g.AntifloodConsecutiveLimit, &g.AntifloodTimerLimit, &g.AntifloodTimerDuration, &g.AntifloodAction, &g.AntifloodDelete,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -108,6 +120,69 @@ func (s *Store) SetGoodbyeMessage(telegramID int64, message string) error {
 func (s *Store) UpdateGroupCaptcha(telegramID int64, enabled bool) error {
 	q := `UPDATE groups SET captcha_enabled = $1 WHERE telegram_id = $2`
 	_, err := s.db.Exec(context.Background(), q, enabled, telegramID)
+	if err == nil {
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("group:%d", telegramID)).Build())
+	}
+	return err
+}
+
+func (s *Store) SetAntiraidUntil(telegramID int64, until *time.Time) error {
+	q := `UPDATE groups SET antiraid_until = $1 WHERE telegram_id = $2`
+	_, err := s.db.Exec(context.Background(), q, until, telegramID)
+	if err == nil {
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("group:%d", telegramID)).Build())
+	}
+	return err
+}
+
+func (s *Store) SetRaidActionTime(telegramID int64, duration string) error {
+	q := `UPDATE groups SET raid_action_time = $1 WHERE telegram_id = $2`
+	_, err := s.db.Exec(context.Background(), q, duration, telegramID)
+	if err == nil {
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("group:%d", telegramID)).Build())
+	}
+	return err
+}
+
+func (s *Store) SetAutoAntiraidThreshold(telegramID int64, threshold int) error {
+	q := `UPDATE groups SET auto_antiraid_threshold = $1 WHERE telegram_id = $2`
+	_, err := s.db.Exec(context.Background(), q, threshold, telegramID)
+	if err == nil {
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("group:%d", telegramID)).Build())
+	}
+	return err
+}
+
+func (s *Store) SetAntifloodConsecutiveLimit(telegramID int64, limit int) error {
+	q := `UPDATE groups SET antiflood_consecutive_limit = $1 WHERE telegram_id = $2`
+	_, err := s.db.Exec(context.Background(), q, limit, telegramID)
+	if err == nil {
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("group:%d", telegramID)).Build())
+	}
+	return err
+}
+
+func (s *Store) SetAntifloodTimer(telegramID int64, limit int, duration string) error {
+	q := `UPDATE groups SET antiflood_timer_limit = $1, antiflood_timer_duration = $2 WHERE telegram_id = $3`
+	_, err := s.db.Exec(context.Background(), q, limit, duration, telegramID)
+	if err == nil {
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("group:%d", telegramID)).Build())
+	}
+	return err
+}
+
+func (s *Store) SetAntifloodAction(telegramID int64, action string) error {
+	q := `UPDATE groups SET antiflood_action = $1 WHERE telegram_id = $2`
+	_, err := s.db.Exec(context.Background(), q, action, telegramID)
+	if err == nil {
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("group:%d", telegramID)).Build())
+	}
+	return err
+}
+
+func (s *Store) SetAntifloodDelete(telegramID int64, delete bool) error {
+	q := `UPDATE groups SET antiflood_delete = $1 WHERE telegram_id = $2`
+	_, err := s.db.Exec(context.Background(), q, delete, telegramID)
 	if err == nil {
 		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("group:%d", telegramID)).Build())
 	}
