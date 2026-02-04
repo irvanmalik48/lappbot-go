@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS notes;
+ALTER TABLE groups DROP COLUMN IF EXISTS notes_private;

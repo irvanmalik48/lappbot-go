@@ -34,6 +34,7 @@ func (m *Module) Register() {
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_warns"}, m.onHelpCallback)
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_realm"}, m.onHelpCallback)
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_purges"}, m.onHelpCallback)
+	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_notes"}, m.onHelpCallback)
 	m.Bot.Bot.Handle("/report", m.handleReport)
 }
 
@@ -95,12 +96,25 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 				markup.Data("Anti-Spam", "help_antispam", "antispam"),
 				markup.Data("Purges", "help_purges", "purges"),
 			),
+			markup.Row(
+				markup.Data("Notes", "help_notes", "notes"),
+			),
 		)
 		err := c.Edit("Welcome to Lappbot Help.\nSelect a category:", markup)
 		if err != nil {
 			return c.Respond()
 		}
 		return nil
+
+	case "notes":
+		text = `**Notes Commands:**
+/get <notename> - Get note
+#<notename> - Get note
+/save <notename> <content> - Save note
+/clear <notename> - Delete note
+/notes - List notes
+/clearall - Delete all notes
+/privatenotes - Toggle private mode`
 
 	case "mod":
 		text = `**Moderation Commands:**

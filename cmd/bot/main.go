@@ -11,6 +11,8 @@ import (
 	"lappbot/internal/modules/filters"
 	"lappbot/internal/modules/greeting"
 	"lappbot/internal/modules/moderation"
+	"lappbot/internal/modules/notes"
+	"lappbot/internal/modules/purge"
 	"lappbot/internal/modules/utility"
 	"lappbot/internal/store"
 
@@ -43,6 +45,12 @@ func main() {
 
 	moderationModule := moderation.New(b, db)
 	moderationModule.Register()
+
+	purgeModule := purge.New(b, db)
+	purgeModule.Register()
+
+	notesModule := notes.New(b, db)
+	notesModule.Register()
 
 	utilityModule := utility.New(b, cfg)
 	utilityModule.Register()
