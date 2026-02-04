@@ -33,6 +33,7 @@ func (m *Module) Register() {
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_antispam"}, m.onHelpCallback)
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_warns"}, m.onHelpCallback)
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_realm"}, m.onHelpCallback)
+	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_purges"}, m.onHelpCallback)
 	m.Bot.Bot.Handle("/report", m.handleReport)
 }
 
@@ -92,6 +93,7 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 			markup.Row(
 				markup.Data("Realm", "help_realm", "realm"),
 				markup.Data("Anti-Spam", "help_antispam", "antispam"),
+				markup.Data("Purges", "help_purges", "purges"),
 			),
 		)
 		err := c.Edit("Welcome to Lappbot Help.\nSelect a category:", markup)
@@ -112,10 +114,17 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 /smute - Silent Mute (Reply)
 /unban - Unban (Reply)
 /unmute - Unmute (Reply)
-/purge <count> - Delete messages
 /pin - Pin (Reply)
 /lock - Lock Group
 /unlock - Unlock Group`
+
+	case "purges":
+		text = `**Purge Commands:**
+/purge [count] - Purge messages
+/spurge [count] - Silent purge
+/del - Delete message
+/purgefrom - Mark start
+/purgeto - Purge range`
 
 	case "warns":
 		text = `**Warning Commands:**

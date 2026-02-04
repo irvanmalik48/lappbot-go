@@ -55,8 +55,6 @@ func (m *Module) Register() {
 	m.Bot.Bot.Handle("/tmute", m.handleTimedMute)
 	m.Bot.Bot.Handle("/rmute", m.handleRealmMute)
 
-	m.Bot.Bot.Handle("/purge", m.handlePurge)
-
 	m.Bot.Bot.Handle("/pin", m.handlePin)
 	m.Bot.Bot.Handle("/lock", m.handleLock)
 	m.Bot.Bot.Handle("/unlock", m.handleUnlock)
