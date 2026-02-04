@@ -1,4 +1,4 @@
-FROM golang:1.25.6-alpine AS builder
+FROM docker.io/golang:1.25.6-alpine AS builder
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ COPY . .
 
 RUN CGO_ENABLED=1 GOOS=linux go build -o bot cmd/bot/main.go
 
-FROM alpine:latest
+FROM docker.io/alpine:latest
 
 WORKDIR /app
 
