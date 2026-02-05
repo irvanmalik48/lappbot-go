@@ -35,6 +35,7 @@ func (m *Module) Register() {
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_realm"}, m.onHelpCallback)
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_purges"}, m.onHelpCallback)
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_notes"}, m.onHelpCallback)
+	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_conn"}, m.onHelpCallback)
 	m.Bot.Bot.Handle("/report", m.handleReport)
 }
 
@@ -108,6 +109,7 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 			),
 			markup.Row(
 				markup.Data("Notes", "help_notes", "notes"),
+				markup.Data("Connection", "help_conn", "conn"),
 			),
 		)
 		err := c.Edit("Welcome to Lappbot Help.\nSelect a category:", markup)
@@ -125,6 +127,13 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 /notes - List notes
 /clearall - Delete all notes
 /privatenotes - Toggle private mode`
+
+	case "conn":
+		text = `**Connection Commands:**
+/connect <chat> - Connect to Chat
+/disconnect - Disconnect
+/reconnect - Reconnect
+/connection - Check Connection`
 
 	case "mod":
 		text = `**Moderation Commands:**
@@ -198,11 +207,7 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 /unapprove - Revoke Exemption
 /bl <type> <value> [action] - Blacklist
 /unbl <type> <value> - Unblacklist
-/blacklist - List Rules
-/connect <chat> - Connect to Chat
-/disconnect - Disconnect
-/reconnect - Reconnect
-/connection - Check Connection`
+/blacklist - List Rules`
 	case "realm":
 		text = `**Realm Commands:**
 /rban [reason] - Realm Ban (Reply)
