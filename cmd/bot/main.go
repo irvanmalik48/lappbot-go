@@ -8,6 +8,7 @@ import (
 	"lappbot/internal/modules/antiflood"
 	"lappbot/internal/modules/antiraid"
 	"lappbot/internal/modules/captcha"
+	"lappbot/internal/modules/connections"
 	"lappbot/internal/modules/filters"
 	"lappbot/internal/modules/greeting"
 	"lappbot/internal/modules/moderation"
@@ -54,6 +55,9 @@ func main() {
 
 	utilityModule := utility.New(b, cfg)
 	utilityModule.Register()
+
+	connectionsModule := connections.New(b, db)
+	connectionsModule.Register()
 
 	filtersModule := filters.NewFilters(b, db)
 	filtersModule.Register()

@@ -29,7 +29,11 @@ func (m *FiltersModule) Register() {
 }
 
 func (m *FiltersModule) handleFilter(c tele.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	target, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+	if !m.Bot.IsAdmin(target, c.Sender()) {
 		return c.Send("You must be an admin to use this command.")
 	}
 	args := c.Args()
@@ -53,7 +57,7 @@ func (m *FiltersModule) handleFilter(c tele.Context) error {
 		return c.Send("Please provide a response text or reply to a text message.")
 	}
 
-	err := m.Store.AddFilter(c.Chat().ID, trigger, response)
+	err = m.Store.AddFilter(target.ID, trigger, response)
 	if err != nil {
 		return c.Send("Failed to save filter: " + err.Error())
 	}
@@ -62,7 +66,11 @@ func (m *FiltersModule) handleFilter(c tele.Context) error {
 }
 
 func (m *FiltersModule) handleStop(c tele.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	target, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+	if !m.Bot.IsAdmin(target, c.Sender()) {
 		return c.Send("You must be an admin to use this command.")
 	}
 	args := c.Args()
@@ -72,7 +80,7 @@ func (m *FiltersModule) handleStop(c tele.Context) error {
 
 	trigger := strings.ToLower(args[0])
 
-	err := m.Store.DeleteFilter(c.Chat().ID, trigger)
+	err = m.Store.DeleteFilter(target.ID, trigger)
 	if err != nil {
 		return c.Send("Failed to delete filter: " + err.Error())
 	}
@@ -81,7 +89,11 @@ func (m *FiltersModule) handleStop(c tele.Context) error {
 }
 
 func (m *FiltersModule) handleFilters(c tele.Context) error {
-	filters, err := m.Store.GetFilters(c.Chat().ID)
+	target, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+	filters, err := m.Store.GetFilters(target.ID)
 	if err != nil {
 		return c.Send("Failed to fetch filters: " + err.Error())
 	}
@@ -104,7 +116,12 @@ func (m *FiltersModule) handleText(c tele.Context) error {
 		return nil
 	}
 
-	filters, err := m.Store.GetFilters(c.Chat().ID)
+	target, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return nil
+	}
+
+	filters, err := m.Store.GetFilters(target.ID)
 	if err != nil {
 		return nil
 	}

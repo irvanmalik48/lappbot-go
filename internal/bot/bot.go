@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"lappbot/internal/config"
@@ -70,4 +71,37 @@ func (b *Bot) IsAdmin(chat *tele.Chat, user *tele.User) bool {
 func (b *Bot) InvalidateAdminCache(chatID, userID int64) {
 	key := fmt.Sprintf("admin:%d:%d", chatID, userID)
 	b.Store.Valkey.Do(context.Background(), b.Store.Valkey.B().Del().Key(key).Build())
+}
+
+func (b *Bot) GetTargetChat(c tele.Context) (*tele.Chat, error) {
+	if c.Chat().Type != tele.ChatPrivate {
+		return c.Chat(), nil
+	}
+
+	targetID, err := b.Store.GetConnection(c.Sender().ID)
+	if err != nil || targetID == 0 {
+		return c.Chat(), nil
+	}
+
+	targetChat, err := b.Bot.ChatByID(targetID)
+	if err != nil {
+		return c.Chat(), nil
+	}
+	return targetChat, nil
+}
+
+func (b *Bot) ResolveChat(identity string) (*tele.Chat, error) {
+	chat, err := b.Bot.ChatByUsername(identity)
+	if err == nil {
+		return chat, nil
+	}
+	// Try by ID
+	id, err := strconv.ParseInt(identity, 10, 64)
+	if err == nil {
+		chat, err = b.Bot.ChatByID(id)
+		if err == nil {
+			return chat, nil
+		}
+	}
+	return nil, err
 }

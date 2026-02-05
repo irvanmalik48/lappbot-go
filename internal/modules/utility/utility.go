@@ -198,7 +198,11 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 /unapprove - Revoke Exemption
 /bl <type> <value> [action] - Blacklist
 /unbl <type> <value> - Unblacklist
-/blacklist - List Rules`
+/blacklist - List Rules
+/connect <chat> - Connect to Chat
+/disconnect - Disconnect
+/reconnect - Reconnect
+/connection - Check Connection`
 	case "realm":
 		text = `**Realm Commands:**
 /rban [reason] - Realm Ban (Reply)

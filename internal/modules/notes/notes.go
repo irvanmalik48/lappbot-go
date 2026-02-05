@@ -36,7 +36,11 @@ func (m *Module) shortcutMiddleware(next tele.HandlerFunc) tele.HandlerFunc {
 		text := c.Text()
 		if len(text) > 1 && strings.HasPrefix(text, "#") {
 			name := strings.ToLower(text[1:])
-			note, err := m.Store.GetNote(c.Chat().ID, name)
+			target, err := m.Bot.GetTargetChat(c)
+			if err != nil {
+				return next(c)
+			}
+			note, err := m.Store.GetNote(target.ID, name)
 			if err == nil && note != nil {
 				return m.sendNoteResponse(c, note)
 			}
@@ -46,6 +50,10 @@ func (m *Module) shortcutMiddleware(next tele.HandlerFunc) tele.HandlerFunc {
 }
 
 func (m *Module) handleSave(c tele.Context) error {
+	target, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
 	args := c.Args()
 	if len(args) == 0 {
 		return c.Send("Usage: /save <name> [content]")
@@ -114,7 +122,7 @@ func (m *Module) handleSave(c tele.Context) error {
 		return c.Send("You need to provide content or reply to a message to save a note.")
 	}
 
-	err := m.Store.SaveNote(c.Chat().ID, name, content, noteType, fileID, c.Sender().ID)
+	err = m.Store.SaveNote(target.ID, name, content, noteType, fileID, c.Sender().ID)
 	if err != nil {
 		return c.Send("Failed to save note.")
 	}
@@ -122,13 +130,17 @@ func (m *Module) handleSave(c tele.Context) error {
 }
 
 func (m *Module) handleGet(c tele.Context) error {
+	target, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
 	args := c.Args()
 	if len(args) == 0 {
 		return c.Send("Usage: /get <name>")
 	}
 	name := strings.ToLower(args[0])
 
-	note, err := m.Store.GetNote(c.Chat().ID, name)
+	note, err := m.Store.GetNote(target.ID, name)
 	if err != nil {
 		return c.Send("Error fetching note.")
 	}
@@ -140,7 +152,12 @@ func (m *Module) handleGet(c tele.Context) error {
 }
 
 func (m *Module) sendNoteResponse(c tele.Context, note *store.Note) error {
-	group, err := m.Store.GetGroup(c.Chat().ID)
+	target, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	group, err := m.Store.GetGroup(target.ID)
 	if err != nil || group == nil {
 		return m.deliverNote(c.Bot(), c.Recipient(), note)
 	}
@@ -156,17 +173,41 @@ func (m *Module) sendNoteResponse(c tele.Context, note *store.Note) error {
 
 func (m *Module) onGetNotePM(c tele.Context) error {
 	name := c.Data()
-	note, err := m.Store.GetNote(c.Chat().ID, name)
+	// Note: Shortcuts/Buttons usually context-aware, but for PM button, we might need tricky logic.
+	// However, GetNote checks chatID. Here c.Chat() might be private if clicked in PM.
+	// But the button is usually sent TO group or TO PM.
+	// If it's "Click to get note" in group, c.Chat() is group.
+	// If it's in PM, c.Chat() is PM.
+	// The original code uses c.Chat().ID.
+	// If we are in PM and button was sent there, we need to know which group it came from?
+	// The original code: note, err := m.Store.GetNote(c.Chat().ID, name)
+	// If I am in PM, GetNote with PM ID will fail unless the note is IN PM.
+	// Note module as written seems to assume notes are PER CHAT.
+	// So if I use /start connection, retrieve a note, it comes to PM.
+	// If I click a button attached to that note...
+	// Wait, the button "get_note_pm" is added when "NotesPrivate" is true, to move view to PM.
+	// If I am ALREADY in PM (via connection), I don't need "get_note_pm".
+	// But let's leave this one as is for now, or just update to target?
+	// If I am in PM and I click a button, valid context is required.
+	// For now, let's update it to respect connection if possible, but buttons are tricky.
+
+	// Actually, let's look at shortcutMiddleware.
+	target, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return nil
+	}
+
+	note, err := m.Store.GetNote(target.ID, name)
 	if err != nil || note == nil {
 		return c.Respond(&tele.CallbackResponse{Text: "Note not found."})
 	}
 
-	target, err := c.Bot().ChatByID(c.Sender().ID)
+	userChat, err := c.Bot().ChatByID(c.Sender().ID)
 	if err != nil {
 		return c.Respond(&tele.CallbackResponse{Text: "Please start the bot in private first."})
 	}
 
-	err = m.deliverNote(c.Bot(), target, note)
+	err = m.deliverNote(c.Bot(), userChat, note)
 	if err != nil {
 		return c.Respond(&tele.CallbackResponse{Text: "Failed to send note."})
 	}
@@ -206,7 +247,11 @@ func (m *Module) deliverNote(b *tele.Bot, to tele.Recipient, note *store.Note) e
 }
 
 func (m *Module) handleClear(c tele.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	target, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+	if !m.Bot.IsAdmin(target, c.Sender()) {
 		return nil
 	}
 	args := c.Args()
@@ -214,7 +259,7 @@ func (m *Module) handleClear(c tele.Context) error {
 		return c.Send("Usage: /clear <name>")
 	}
 	name := strings.ToLower(args[0])
-	err := m.Store.DeleteNote(c.Chat().ID, name)
+	err = m.Store.DeleteNote(target.ID, name)
 	if err != nil {
 		return c.Send("Failed to minimize note.")
 	}
@@ -222,7 +267,11 @@ func (m *Module) handleClear(c tele.Context) error {
 }
 
 func (m *Module) handleNotes(c tele.Context) error {
-	notes, err := m.Store.GetNotes(c.Chat().ID)
+	target, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+	notes, err := m.Store.GetNotes(target.ID)
 	if err != nil {
 		return c.Send("Failed to fetch notes.")
 	}
@@ -237,10 +286,14 @@ func (m *Module) handleNotes(c tele.Context) error {
 }
 
 func (m *Module) handleClearAll(c tele.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	target, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+	if !m.Bot.IsAdmin(target, c.Sender()) {
 		return nil
 	}
-	err := m.Store.ClearAllNotes(c.Chat().ID)
+	err = m.Store.ClearAllNotes(target.ID)
 	if err != nil {
 		return c.Send("Failed to clear notes.")
 	}
@@ -248,15 +301,19 @@ func (m *Module) handleClearAll(c tele.Context) error {
 }
 
 func (m *Module) handlePrivateNotes(c tele.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	target, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+	if !m.Bot.IsAdmin(target, c.Sender()) {
 		return nil
 	}
-	group, err := m.Store.GetGroup(c.Chat().ID)
+	group, err := m.Store.GetGroup(target.ID)
 	if err != nil || group == nil {
 		return c.Send("Group not found.")
 	}
 	newState := !group.NotesPrivate
-	err = m.Store.SetNotesPrivate(c.Chat().ID, newState)
+	err = m.Store.SetNotesPrivate(target.ID, newState)
 	if err != nil {
 		return c.Send("Failed to update settings.")
 	}
