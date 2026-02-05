@@ -35,31 +35,6 @@ Whatever Rose has, Lappbot is trying to reimplement it, so yeah.
     docker-compose up -d --build
     ```
 
-### Podman Quadlets
-
-This project supports Podman Quadlets for systemd integration.
-
-1.  ```bash
-    podman build -t lappbot-app:latest .
-    ```
-
-2.  Copy the files from `deploy/quadlets/` to your user systemd directory:
-
-    ```bash
-    mkdir -p ~/.config/containers/systemd/
-    cp deploy/quadlets/* ~/.config/containers/systemd/
-    ```
-
-3.  ```bash
-    systemctl --user daemon-reload
-    systemctl --user start lappbot-app
-    ```
-    Enable on boot:
-    ```bash
-    systemctl --user enable lappbot-app
-    loginctl enable-linger $USER
-    ```
-
 ## Usage
 
 Use `/help` to see all commands, duh.
