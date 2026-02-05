@@ -43,8 +43,18 @@ func (m *Module) handleStart(c tele.Context) error {
 }
 
 func (m *Module) handlePing(c tele.Context) error {
-	latency := time.Since(c.Message().Time())
-	return c.Send(fmt.Sprintf("Pong! Latency: %v", latency))
+	latency := time.Since(c.Message().Time()).Round(time.Millisecond)
+	storePings, err := m.Bot.Store.Ping()
+	if err != nil {
+		return c.Send(fmt.Sprintf("Pong! Latency: %v\nError checking store: %v", latency, err))
+	}
+
+	uptime := time.Since(m.Bot.StartTime).Round(time.Second)
+
+	msg := fmt.Sprintf("**PONG!**\n\nBot: `%v`\nDatabase: `%v`\nValkey: `%v`\n\nUptime: `%v`",
+		latency, storePings["database"].Round(time.Millisecond), storePings["valkey"].Round(time.Millisecond), uptime)
+
+	return c.Send(msg, tele.ModeMarkdown)
 }
 
 func (m *Module) handleVersion(c tele.Context) error {
@@ -177,9 +187,9 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 {firstname}, {username}, {userid}`
 	case "filters":
 		text = `**Filter Commands:**
-/filter <trigger> <response> - Add
-/stop <trigger> - Remove
-/filters - List`
+/filter <trigger> <response> - Add filter (reply)
+/stop <trigger> - Remove filter
+/filters - List filters`
 	case "admin":
 		text = `**Admin Commands:**
 /promote [title] - Promote

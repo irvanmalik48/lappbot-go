@@ -13,9 +13,10 @@ import (
 )
 
 type Bot struct {
-	Bot   *tele.Bot
-	Store *store.Store
-	Cfg   *config.Config
+	Bot       *tele.Bot
+	Store     *store.Store
+	Cfg       *config.Config
+	StartTime time.Time
 }
 
 func New(cfg *config.Config, store *store.Store) (*Bot, error) {
@@ -30,9 +31,10 @@ func New(cfg *config.Config, store *store.Store) (*Bot, error) {
 	}
 
 	return &Bot{
-		Bot:   b,
-		Store: store,
-		Cfg:   cfg,
+		Bot:       b,
+		Store:     store,
+		Cfg:       cfg,
+		StartTime: time.Now(),
 	}, nil
 }
 

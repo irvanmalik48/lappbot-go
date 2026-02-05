@@ -33,12 +33,25 @@ func (m *FiltersModule) handleFilter(c tele.Context) error {
 		return c.Send("You must be an admin to use this command.")
 	}
 	args := c.Args()
-	if len(args) < 2 {
-		return c.Send("Usage: /filter <trigger> <response>")
+	if len(args) < 1 {
+		return c.Send("Usage: /filter <trigger> <response> (or reply to a message)")
 	}
 
 	trigger := strings.ToLower(args[0])
-	response := strings.Join(args[1:], " ")
+	var response string
+
+	if c.Message().IsReply() {
+		response = c.Message().ReplyTo.Text
+		if response == "" {
+			response = c.Message().ReplyTo.Caption
+		}
+	} else if len(args) >= 2 {
+		response = strings.Join(args[1:], " ")
+	}
+
+	if response == "" {
+		return c.Send("Please provide a response text or reply to a text message.")
+	}
 
 	err := m.Store.AddFilter(c.Chat().ID, trigger, response)
 	if err != nil {
@@ -100,7 +113,7 @@ func (m *FiltersModule) handleText(c tele.Context) error {
 
 	for _, f := range filters {
 		if strings.Contains(lowerText, strings.ToLower(f.Trigger)) {
-			return c.Send(f.Response)
+			return c.Send(f.Response, tele.ModeMarkdown)
 		}
 	}
 

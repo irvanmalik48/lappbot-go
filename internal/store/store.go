@@ -61,3 +61,21 @@ func (s *Store) Close() {
 func (s *Store) GetPool() *pgxpool.Pool {
 	return s.db
 }
+
+func (s *Store) Ping() (map[string]time.Duration, error) {
+	res := make(map[string]time.Duration)
+
+	start := time.Now()
+	if err := s.db.Ping(context.Background()); err != nil {
+		return nil, err
+	}
+	res["database"] = time.Since(start)
+
+	start = time.Now()
+	if err := s.Valkey.Do(context.Background(), s.Valkey.B().Ping().Build()).Error(); err != nil {
+		return nil, err
+	}
+	res["valkey"] = time.Since(start)
+
+	return res, nil
+}
