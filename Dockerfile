@@ -2,14 +2,12 @@ FROM docker.io/golang:1.25.6-alpine AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache gcc musl-dev
-
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=1 GOOS=linux go build -o bot cmd/bot/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o bot cmd/bot/main.go
 
 FROM docker.io/alpine:latest
 
