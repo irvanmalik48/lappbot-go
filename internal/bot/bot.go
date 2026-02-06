@@ -24,6 +24,7 @@ func New(cfg *config.Config, store *store.Store) (*Bot, error) {
 	pref := tele.Settings{
 		Token:  cfg.BotToken,
 		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
+		URL:    cfg.BotAPIURL,
 	}
 
 	b, err := tele.NewBot(pref)

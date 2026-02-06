@@ -22,6 +22,7 @@ type Config struct {
 	ValkeyHost     string
 	ValkeyPort     int
 	ValkeyPassword string
+	BotAPIURL      string
 }
 
 func Load() *Config {
@@ -44,6 +45,7 @@ func Load() *Config {
 		ValkeyHost:     getEnv("VALKEY_HOST", "localhost"),
 		ValkeyPort:     getEnvAsInt("VALKEY_PORT", 6379),
 		ValkeyPassword: getEnv("VALKEY_PASSWORD", ""),
+		BotAPIURL:      getEnv("BOT_API_URL", "http://localhost:8081"),
 	}
 }
 
