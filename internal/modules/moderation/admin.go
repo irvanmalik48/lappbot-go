@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	tele "gopkg.in/telebot.v3"
+	tele "gopkg.in/telebot.v4"
 )
 
 func (m *Module) handleApprove(c tele.Context) error {

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	tele "gopkg.in/telebot.v3"
+	tele "gopkg.in/telebot.v4"
 )
 
 func (m *Module) handleWarn(c tele.Context) error {

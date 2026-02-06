@@ -9,7 +9,7 @@ import (
 
 	"lappbot/internal/store"
 
-	tele "gopkg.in/telebot.v3"
+	tele "gopkg.in/telebot.v4"
 )
 
 func (m *Module) handleBlacklistAdd(c tele.Context) error {
@@ -136,7 +136,7 @@ func (m *Module) CheckBlacklist(next tele.HandlerFunc) tele.HandlerFunc {
 				if c.Message().Entities != nil {
 					for _, entity := range c.Message().Entities {
 						if entity.Type == tele.EntityCustomEmoji {
-							if entity.CustomEmoji == item.Value {
+							if entity.CustomEmojiID == item.Value {
 								matched = true
 								break
 							}

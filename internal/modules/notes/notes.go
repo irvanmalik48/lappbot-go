@@ -7,7 +7,7 @@ import (
 	"lappbot/internal/bot"
 	"lappbot/internal/store"
 
-	tele "gopkg.in/telebot.v3"
+	tele "gopkg.in/telebot.v4"
 )
 
 type Module struct {
@@ -214,7 +214,7 @@ func (m *Module) onGetNotePM(c tele.Context) error {
 	return c.Respond(&tele.CallbackResponse{Text: "Note sent to your PM."})
 }
 
-func (m *Module) deliverNote(b *tele.Bot, to tele.Recipient, note *store.Note) error {
+func (m *Module) deliverNote(b tele.API, to tele.Recipient, note *store.Note) error {
 	var what interface{}
 	opts := &tele.SendOptions{}
 	if note.Type == "text" {

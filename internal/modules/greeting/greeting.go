@@ -6,7 +6,7 @@ import (
 	"lappbot/internal/store"
 	"strings"
 
-	tele "gopkg.in/telebot.v3"
+	tele "gopkg.in/telebot.v4"
 )
 
 type Module struct {

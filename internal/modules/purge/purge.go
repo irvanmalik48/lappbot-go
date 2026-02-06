@@ -10,7 +10,7 @@ import (
 	"lappbot/internal/store"
 
 	"github.com/valkey-io/valkey-go"
-	tele "gopkg.in/telebot.v3"
+	tele "gopkg.in/telebot.v4"
 )
 
 type Module struct {

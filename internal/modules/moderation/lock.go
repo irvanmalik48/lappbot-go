@@ -1,7 +1,7 @@
 package moderation
 
 import (
-	tele "gopkg.in/telebot.v3"
+	tele "gopkg.in/telebot.v4"
 )
 
 func (m *Module) handleLock(c tele.Context) error {

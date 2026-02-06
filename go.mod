@@ -7,8 +7,9 @@ require (
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/joho/godotenv v1.5.1
 	github.com/valkey-io/valkey-go v1.0.71
-	gopkg.in/telebot.v3 v3.3.8
 )
+
+require gopkg.in/telebot.v4 v4.0.0-beta.7
 
 require github.com/matoous/go-nanoid/v2 v2.1.0 // direct
 

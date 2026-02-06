@@ -10,7 +10,7 @@ import (
 	"lappbot/internal/config"
 	"lappbot/internal/store"
 
-	tele "gopkg.in/telebot.v3"
+	tele "gopkg.in/telebot.v4"
 )
 
 type Bot struct {
