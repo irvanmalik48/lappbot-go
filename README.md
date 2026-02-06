@@ -11,12 +11,15 @@ Whatever Rose has, Lappbot is trying to reimplement it, so yeah.
 - Go 1.25+
 - PostgreSQL
 - Valkey
+- Local Telegram Bot API (aiogram/telegram-bot-api or something idk)
 
 1.  `git clone https://github.com/irvanmalik48/lappbot-go`
 
 2.  `cd lappbot-go`
 
 3.  Copy `.env.example` to `.env` (or create it) and fill in your details.
+    - **Note**: For Local Bot API, ensure you provide `TELEGRAM_API_ID` and `TELEGRAM_API_HASH`.
+    - Set `BOT_API_URL` correctly (e.g., `http://127.0.0.1:8081` or whatever port you configured).
 
 4.  The bot handles migrations automatically on startup using `golang-migrate`.
 
