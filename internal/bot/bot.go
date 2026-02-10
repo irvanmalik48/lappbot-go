@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -21,9 +22,19 @@ type Bot struct {
 }
 
 func New(cfg *config.Config, store *store.Store) (*Bot, error) {
+	client := &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 100,
+			IdleConnTimeout:     90 * time.Second,
+		},
+		Timeout: 0,
+	}
+
 	pref := tele.Settings{
 		Token:  cfg.BotToken,
-		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
+		Poller: &tele.LongPoller{Timeout: 60 * time.Second},
+		Client: client,
 		URL:    cfg.BotAPIURL,
 	}
 
