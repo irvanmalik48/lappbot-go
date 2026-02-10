@@ -84,6 +84,7 @@ func (m *Module) handleHelp(c tele.Context) error {
 }
 
 func (m *Module) onHelpCallback(c tele.Context) error {
+	defer c.Respond()
 	section := c.Data()
 	markup := &tele.ReplyMarkup{}
 	backBtn := markup.Data("« Back", "help_main", "main")
@@ -112,11 +113,7 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 				markup.Data("Connection", "help_conn", "conn"),
 			),
 		)
-		err := c.Edit("Welcome to Lappbot Help.\nSelect a category:", markup)
-		if err != nil {
-			return c.Respond()
-		}
-		return nil
+		return c.Edit("Welcome to Lappbot Help.\nSelect a category:", markup)
 
 	case "notes":
 		text = `**Notes Commands:**
@@ -216,11 +213,7 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 	}
 
 	markup.Inline(markup.Row(backBtn))
-	err := c.Edit(text, markup, tele.ModeMarkdown)
-	if err != nil {
-		return c.Respond()
-	}
-	return nil
+	return c.Edit(text, markup, tele.ModeMarkdown)
 }
 
 func (m *Module) handleReport(c tele.Context) error {
