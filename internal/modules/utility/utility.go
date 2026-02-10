@@ -37,6 +37,7 @@ func (m *Module) Register() {
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_notes"}, m.onHelpCallback)
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_conn"}, m.onHelpCallback)
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_topics"}, m.onHelpCallback)
+	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_cursed"}, m.onHelpCallback)
 	m.Bot.Bot.Handle("/report", m.handleReport)
 }
 
@@ -117,9 +118,17 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 			),
 			markup.Row(
 				markup.Data("Topics", "help_topics", "topics"),
+				markup.Data("Cursed", "help_cursed", "cursed"),
 			),
 		)
 		return c.Edit("Welcome to Lappbot Help.\nSelect a category:", markup)
+
+	case "cursed":
+		text = `**Cursed Commands:**
+/zalgo <text> - Zalgo text
+/uwuify <text> - UwU text
+/emojify <text> - Emojify text
+/leetify <text> - Leetify text`
 
 	case "topics":
 		text = `**Topic Commands:**

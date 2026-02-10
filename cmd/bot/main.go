@@ -9,6 +9,7 @@ import (
 	"lappbot/internal/modules/antiraid"
 	"lappbot/internal/modules/captcha"
 	"lappbot/internal/modules/connections"
+	"lappbot/internal/modules/cursed"
 	"lappbot/internal/modules/filters"
 	"lappbot/internal/modules/greeting"
 	"lappbot/internal/modules/moderation"
@@ -71,6 +72,9 @@ func main() {
 
 	topicsModule := topics.New(b, cfg)
 	topicsModule.Register()
+
+	cursedModule := cursed.New(b, cfg)
+	cursedModule.Register()
 
 	b.Bot.Handle(tele.OnUserJoined, func(c tele.Context) error {
 		if err := greetingModule.OnUserJoined(c); err != nil {

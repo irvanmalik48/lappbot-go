@@ -120,6 +120,10 @@ unbl - Unblacklist
 blacklist - List Rules
 rban - Realm Ban (Reply)
 rmute - Realm Mute (Reply)
+zalgo - Zalgo text generator
+uwuify - UwU text transformation
+emojify - Emojify text
+leetify - Leetify text
 ```
 
 ## License
