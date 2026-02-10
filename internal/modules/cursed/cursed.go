@@ -26,39 +26,52 @@ func (m *Module) Register() {
 }
 
 func (m *Module) handleZalgo(c tele.Context) error {
-	text := c.Args()
-	if len(text) == 0 {
-		return c.Send("Usage: /zalgo <text>")
+	input := getInput(c)
+	if input == "" {
+		return c.Send("Usage: /zalgo <text> (or reply to a message)")
 	}
-	input := strings.Join(text, " ")
 	return c.Send(zalgo(input))
 }
 
 func (m *Module) handleUwuify(c tele.Context) error {
-	text := c.Args()
-	if len(text) == 0 {
-		return c.Send("Usage: /uwuify <text>")
+	input := getInput(c)
+	if input == "" {
+		return c.Send("Usage: /uwuify <text> (or reply to a message)")
 	}
-	input := strings.Join(text, " ")
 	return c.Send(uwuify(input))
 }
 
 func (m *Module) handleEmojify(c tele.Context) error {
-	text := c.Args()
-	if len(text) == 0 {
-		return c.Send("Usage: /emojify <text>")
+	input := getInput(c)
+	if input == "" {
+		return c.Send("Usage: /emojify <text> (or reply to a message)")
 	}
-	input := strings.Join(text, " ")
 	return c.Send(emojify(input))
 }
 
 func (m *Module) handleLeetify(c tele.Context) error {
-	text := c.Args()
-	if len(text) == 0 {
-		return c.Send("Usage: /leetify <text>")
+	input := getInput(c)
+	if input == "" {
+		return c.Send("Usage: /leetify <text> (or reply to a message)")
 	}
-	input := strings.Join(text, " ")
 	return c.Send(leetify(input))
+}
+
+func getInput(c tele.Context) string {
+	if len(c.Args()) > 0 {
+		return strings.Join(c.Args(), " ")
+	}
+
+	if c.Message().IsReply() {
+		if c.Message().ReplyTo.Text != "" {
+			return c.Message().ReplyTo.Text
+		}
+		if c.Message().ReplyTo.Caption != "" {
+			return c.Message().ReplyTo.Caption
+		}
+	}
+
+	return ""
 }
 
 func zalgo(text string) string {
