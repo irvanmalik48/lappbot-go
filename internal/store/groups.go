@@ -32,6 +32,7 @@ type Group struct {
 	WarnAction                string
 	WarnDuration              string
 	NotesPrivate              bool
+	ActionTopicID             *int64
 	CreatedAt                 interface{}
 }
 
@@ -48,7 +49,7 @@ func (s *Store) GetGroup(telegramID int64) (*Group, error) {
 	q := `SELECT id, telegram_id, title, greeting_enabled, greeting_message, goodbye_enabled, goodbye_message, captcha_enabled,
                  antiraid_until, raid_action_time, auto_antiraid_threshold,
                  antiflood_consecutive_limit, antiflood_timer_limit, antiflood_timer_duration, antiflood_action, antiflood_delete,
-                 warn_limit, warn_action, warn_duration, notes_private
+                 warn_limit, warn_action, warn_duration, notes_private, action_topic_id
           FROM groups WHERE telegram_id = $1`
 
 	var g Group
@@ -56,7 +57,7 @@ func (s *Store) GetGroup(telegramID int64) (*Group, error) {
 		&g.ID, &g.TelegramID, &g.Title, &g.GreetingEnabled, &g.GreetingMessage, &g.GoodbyeEnabled, &g.GoodbyeMessage, &g.CaptchaEnabled,
 		&g.AntiraidUntil, &g.RaidActionTime, &g.AutoAntiraidThreshold,
 		&g.AntifloodConsecutiveLimit, &g.AntifloodTimerLimit, &g.AntifloodTimerDuration, &g.AntifloodAction, &g.AntifloodDelete,
-		&g.WarnLimit, &g.WarnAction, &g.WarnDuration, &g.NotesPrivate,
+		&g.WarnLimit, &g.WarnAction, &g.WarnDuration, &g.NotesPrivate, &g.ActionTopicID,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -225,6 +226,15 @@ func (s *Store) SetWarnDuration(telegramID int64, duration string) error {
 func (s *Store) SetNotesPrivate(telegramID int64, enabled bool) error {
 	q := `UPDATE groups SET notes_private = $1 WHERE telegram_id = $2`
 	_, err := s.db.Exec(context.Background(), q, enabled, telegramID)
+	if err == nil {
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("group:%d", telegramID)).Build())
+	}
+	return err
+}
+
+func (s *Store) SetActionTopic(telegramID, topicID int64) error {
+	q := `UPDATE groups SET action_topic_id = $1 WHERE telegram_id = $2`
+	_, err := s.db.Exec(context.Background(), q, topicID, telegramID)
 	if err == nil {
 		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("group:%d", telegramID)).Build())
 	}

@@ -36,6 +36,7 @@ func (m *Module) Register() {
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_purges"}, m.onHelpCallback)
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_notes"}, m.onHelpCallback)
 	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_conn"}, m.onHelpCallback)
+	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_topics"}, m.onHelpCallback)
 	m.Bot.Bot.Handle("/report", m.handleReport)
 }
 
@@ -114,8 +115,21 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 				markup.Data("Notes", "help_notes", "notes"),
 				markup.Data("Connection", "help_conn", "conn"),
 			),
+			markup.Row(
+				markup.Data("Topics", "help_topics", "topics"),
+			),
 		)
 		return c.Edit("Welcome to Lappbot Help.\nSelect a category:", markup)
+
+	case "topics":
+		text = `**Topic Commands:**
+/actiontopic - Get action topic
+/setactiontopic - Set action topic
+/newtopic <name> - Create topic
+/renametopic <name> - Rename topic
+/closetopic - Close topic
+/reopentopic - Reopen topic
+/deletetopic - Delete topic`
 
 	case "notes":
 		text = `**Notes Commands:**
