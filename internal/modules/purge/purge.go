@@ -43,20 +43,19 @@ func (m *Module) handlePurge(c tele.Context) error {
 	}
 	startID := c.Message().ReplyTo.ID
 	endID := c.Message().ID
-	toDelete := []int{}
+	var toDelete []tele.Editable
 	if limit > 0 {
 		for i := 1; i <= limit; i++ {
-			toDelete = append(toDelete, startID+i)
+			toDelete = append(toDelete, &tele.Message{ID: startID + i, Chat: c.Chat()})
 		}
 	} else {
 		for i := startID; i < endID; i++ {
-			toDelete = append(toDelete, i)
+			toDelete = append(toDelete, &tele.Message{ID: i, Chat: c.Chat()})
 		}
 	}
-	toDelete = append(toDelete, endID)
-	for _, id := range toDelete {
-		c.Bot().Delete(&tele.Message{ID: id, Chat: c.Chat()})
-	}
+	toDelete = append(toDelete, &tele.Message{ID: endID, Chat: c.Chat()})
+	c.Bot().DeleteMany(toDelete)
+
 	msg, err := c.Bot().Send(c.Chat(), "Purge complete.")
 	if err == nil {
 		go func() {
@@ -80,20 +79,18 @@ func (m *Module) handleSPurge(c tele.Context) error {
 	}
 	startID := c.Message().ReplyTo.ID
 	endID := c.Message().ID
-	toDelete := []int{}
+	var toDelete []tele.Editable
 	if limit > 0 {
 		for i := 1; i <= limit; i++ {
-			toDelete = append(toDelete, startID+i)
+			toDelete = append(toDelete, &tele.Message{ID: startID + i, Chat: c.Chat()})
 		}
 	} else {
 		for i := startID; i < endID; i++ {
-			toDelete = append(toDelete, i)
+			toDelete = append(toDelete, &tele.Message{ID: i, Chat: c.Chat()})
 		}
 	}
-	toDelete = append(toDelete, endID)
-	for _, id := range toDelete {
-		c.Bot().Delete(&tele.Message{ID: id, Chat: c.Chat()})
-	}
+	toDelete = append(toDelete, &tele.Message{ID: endID, Chat: c.Chat()})
+	c.Bot().DeleteMany(toDelete)
 	return nil
 }
 
@@ -143,14 +140,13 @@ func (m *Module) handlePurgeTo(c tele.Context) error {
 	if startID > endID {
 		startID, endID = endID, startID
 	}
-	toDelete := []int{}
+	var toDelete []tele.Editable
 	for i := startID; i <= endID; i++ {
-		toDelete = append(toDelete, i)
+		toDelete = append(toDelete, &tele.Message{ID: i, Chat: c.Chat()})
 	}
-	toDelete = append(toDelete, c.Message().ID)
-	for _, id := range toDelete {
-		c.Bot().Delete(&tele.Message{ID: id, Chat: c.Chat()})
-	}
+	toDelete = append(toDelete, &tele.Message{ID: c.Message().ID, Chat: c.Chat()})
+	c.Bot().DeleteMany(toDelete)
+
 	m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Del().Key(key).Build())
 	msg, err := c.Bot().Send(c.Chat(), "Range purge complete.")
 	if err == nil {
