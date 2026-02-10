@@ -14,6 +14,7 @@ import (
 	"lappbot/internal/modules/moderation"
 	"lappbot/internal/modules/notes"
 	"lappbot/internal/modules/purge"
+	"lappbot/internal/modules/topics"
 	"lappbot/internal/modules/utility"
 	"lappbot/internal/store"
 
@@ -67,6 +68,9 @@ func main() {
 
 	antifloodModule := antiflood.New(b, db)
 	antifloodModule.Register()
+
+	topicsModule := topics.New(b, cfg)
+	topicsModule.Register()
 
 	b.Bot.Handle(tele.OnUserJoined, func(c tele.Context) error {
 		if err := greetingModule.OnUserJoined(c); err != nil {
