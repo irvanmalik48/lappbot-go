@@ -51,9 +51,11 @@ func (m *Module) handlePing(c tele.Context) error {
 	}
 
 	uptime := time.Since(m.Bot.StartTime).Round(time.Second)
+	uptimeStr := strings.ReplaceAll(uptime.String(), "h", "h ")
+	uptimeStr = strings.ReplaceAll(uptimeStr, "m", "m ")
 
 	msg := fmt.Sprintf("**PONG!**\n\nBot: `%v`\nDatabase: `%v`\nValkey: `%v`\n\nUptime: `%v`",
-		latency, storePings["database"].Round(time.Millisecond), storePings["valkey"].Round(time.Millisecond), uptime)
+		latency, storePings["database"].Round(time.Millisecond), storePings["valkey"].Round(time.Millisecond), uptimeStr)
 
 	return c.Send(msg, tele.ModeMarkdown)
 }
