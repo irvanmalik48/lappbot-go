@@ -57,7 +57,13 @@ func (b *Bot) Start() {
 }
 
 func (b *Bot) IsAdmin(chat *tele.Chat, user *tele.User) bool {
-	key := fmt.Sprintf("admin:%d:%d", chat.ID, user.ID)
+	keyBuf := make([]byte, 0, 64)
+	keyBuf = append(keyBuf, "admin:"...)
+	keyBuf = strconv.AppendInt(keyBuf, chat.ID, 10)
+	keyBuf = append(keyBuf, ':')
+	keyBuf = strconv.AppendInt(keyBuf, user.ID, 10)
+	key := string(keyBuf)
+
 	val, err := b.Store.Valkey.Do(context.Background(), b.Store.Valkey.B().Get().Key(key).Build()).ToString()
 	if err == nil {
 		return val == "1"
@@ -107,7 +113,6 @@ func (b *Bot) ResolveChat(identity string) (*tele.Chat, error) {
 	if err == nil {
 		return chat, nil
 	}
-	// Try by ID
 	id, err := strconv.ParseInt(identity, 10, 64)
 	if err == nil {
 		chat, err = b.Bot.ChatByID(id)

@@ -5,23 +5,37 @@ import (
 	"fmt"
 	"lappbot/internal/bot"
 	"lappbot/internal/store"
+	"regexp"
 	"strings"
 	"sync"
 
 	tele "gopkg.in/telebot.v4"
 )
 
+type BlacklistCache struct {
+	sync.RWMutex
+	Regexes       map[int64][]*regexp.Regexp
+	StickerSets   map[int64]map[string]store.BlacklistItem
+	Emojis        map[int64]map[string]store.BlacklistItem
+	ApprovedUsers map[int64]map[int64]struct{}
+}
+
 type Module struct {
-	Bot        *bot.Bot
-	Store      *store.Store
-	RegexCache *sync.Map
+	Bot            *bot.Bot
+	Store          *store.Store
+	BlacklistCache *BlacklistCache
 }
 
 func New(b *bot.Bot, s *store.Store) *Module {
 	return &Module{
-		Bot:        b,
-		Store:      s,
-		RegexCache: &sync.Map{},
+		Bot:   b,
+		Store: s,
+		BlacklistCache: &BlacklistCache{
+			Regexes:       make(map[int64][]*regexp.Regexp),
+			StickerSets:   make(map[int64]map[string]store.BlacklistItem),
+			Emojis:        make(map[int64]map[string]store.BlacklistItem),
+			ApprovedUsers: make(map[int64]map[int64]struct{}),
+		},
 	}
 }
 
@@ -82,6 +96,13 @@ func (m *Module) handleRefreshCache(c tele.Context) error {
 	if err != nil {
 		return c.Send("Failed to refresh cache: " + err.Error())
 	}
+
+	m.BlacklistCache.Lock()
+	m.BlacklistCache.Regexes = make(map[int64][]*regexp.Regexp)
+	m.BlacklistCache.StickerSets = make(map[int64]map[string]store.BlacklistItem)
+	m.BlacklistCache.Emojis = make(map[int64]map[string]store.BlacklistItem)
+	m.BlacklistCache.ApprovedUsers = make(map[int64]map[int64]struct{})
+	m.BlacklistCache.Unlock()
 
 	return c.Send("Cache refreshed successfully.")
 }

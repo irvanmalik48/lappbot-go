@@ -37,10 +37,7 @@ func (m *Module) warnUser(c tele.Context, deleteMessage, silent bool) error {
 	reason := c.Args()
 	reasonStr := "No reason provided"
 	if len(reason) > 0 {
-		reasonStr = ""
-		for _, s := range reason {
-			reasonStr += s + " "
-		}
+		reasonStr = strings.Join(reason, " ")
 	}
 
 	_, err := m.Store.AddWarn(target.ID, c.Chat().ID, reasonStr, c.Sender().ID)

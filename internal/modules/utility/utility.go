@@ -67,34 +67,21 @@ func (m *Module) handleVersion(c tele.Context) error {
 }
 
 func (m *Module) handleHelp(c tele.Context) error {
-	markup := &tele.ReplyMarkup{}
-	markup.Inline(
-		markup.Row(
-			markup.Data("Moderation", "help_mod", "mod"),
-			markup.Data("Settings", "help_settings", "settings"),
-		),
-		markup.Row(
-			markup.Data("Filters", "help_filters", "filters"),
-			markup.Data("Warnings", "help_warns", "warns"),
-			markup.Data("Admin", "help_admin", "admin"),
-		),
-		markup.Row(
-			markup.Data("Realm", "help_realm", "realm"),
-			markup.Data("Anti-Spam", "help_antispam", "antispam"),
-		),
-	)
-
-	return c.Send("Welcome to Lappbot Help.\nSelect a category:", markup)
+	text, markup := m.getHelpMenu("main")
+	return c.Send(text, markup, tele.ModeMarkdown)
 }
 
 func (m *Module) onHelpCallback(c tele.Context) error {
 	defer c.Respond()
-	section := c.Data()
+	text, markup := m.getHelpMenu(c.Data())
+	return c.Edit(text, markup, tele.ModeMarkdown)
+}
+
+func (m *Module) getHelpMenu(section string) (string, *tele.ReplyMarkup) {
 	markup := &tele.ReplyMarkup{}
 	backBtn := markup.Data("« Back", "help_main", "main")
 
 	var text string
-
 	switch section {
 	case "main":
 		markup.Inline(
@@ -121,7 +108,7 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 				markup.Data("Cursed", "help_cursed", "cursed"),
 			),
 		)
-		return c.Edit("Welcome to Lappbot Help.\nSelect a category:", markup)
+		return "Welcome to Lappbot Help.\nSelect a category:", markup
 
 	case "cursed":
 		text = `**Cursed Commands:**
@@ -238,7 +225,7 @@ func (m *Module) onHelpCallback(c tele.Context) error {
 	}
 
 	markup.Inline(markup.Row(backBtn))
-	return c.Edit(text, markup, tele.ModeMarkdown)
+	return text, markup
 }
 
 func (m *Module) handleReport(c tele.Context) error {

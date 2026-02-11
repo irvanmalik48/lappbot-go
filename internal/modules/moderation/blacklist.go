@@ -46,6 +46,12 @@ func (m *Module) handleBlacklistAdd(c tele.Context) error {
 		return c.Send("Failed to add blacklist item: " + err.Error())
 	}
 
+	m.BlacklistCache.Lock()
+	delete(m.BlacklistCache.Regexes, c.Chat().ID)
+	delete(m.BlacklistCache.StickerSets, c.Chat().ID)
+	delete(m.BlacklistCache.Emojis, c.Chat().ID)
+	m.BlacklistCache.Unlock()
+
 	return c.Send(fmt.Sprintf("Blacklisted %s: %s (Action: %s)", kind, value, action))
 }
 
@@ -66,6 +72,12 @@ func (m *Module) handleBlacklistRemove(c tele.Context) error {
 	if err != nil {
 		return c.Send("Failed to remove blacklist item: " + err.Error())
 	}
+
+	m.BlacklistCache.Lock()
+	delete(m.BlacklistCache.Regexes, c.Chat().ID)
+	delete(m.BlacklistCache.StickerSets, c.Chat().ID)
+	delete(m.BlacklistCache.Emojis, c.Chat().ID)
+	m.BlacklistCache.Unlock()
 
 	return c.Send(fmt.Sprintf("Removed %s from blacklist: %s", kind, value))
 }
@@ -88,65 +100,127 @@ func (m *Module) handleBlacklistList(c tele.Context) error {
 	return c.Send(msg, tele.ModeHTML)
 }
 
+func (m *Module) LoadBlacklistCache(groupID int64) error {
+	items, err := m.Store.GetBlacklist(groupID)
+	if err != nil {
+		return err
+	}
+
+	m.BlacklistCache.Lock()
+	defer m.BlacklistCache.Unlock()
+
+	var regexes []*regexp.Regexp
+	stickers := make(map[string]store.BlacklistItem, len(items))
+	emojis := make(map[string]store.BlacklistItem, len(items))
+
+	for _, item := range items {
+		switch item.Type {
+		case "regex":
+			re, err := regexp.Compile(item.Value)
+			if err == nil {
+				regexes = append(regexes, re)
+			}
+		case "sticker_set":
+			stickers[item.Value] = item
+		case "emoji":
+			emojis[item.Value] = item
+		}
+	}
+
+	m.BlacklistCache.Regexes[groupID] = regexes
+	m.BlacklistCache.StickerSets[groupID] = stickers
+	m.BlacklistCache.Emojis[groupID] = emojis
+
+	return nil
+}
+
+func (m *Module) LoadApprovedUsers(groupID int64) error {
+	users, err := m.Store.GetApprovedUsers(groupID)
+	if err != nil {
+		return err
+	}
+
+	userMap := make(map[int64]struct{}, len(users))
+	for _, uid := range users {
+		userMap[uid] = struct{}{}
+	}
+
+	m.BlacklistCache.Lock()
+	m.BlacklistCache.ApprovedUsers[groupID] = userMap
+	m.BlacklistCache.Unlock()
+
+	return nil
+}
+
 func (m *Module) CheckBlacklist(next tele.HandlerFunc) tele.HandlerFunc {
 	return func(c tele.Context) error {
 		if m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 			return next(c)
 		}
 
-		isApproved, err := m.Store.IsApprovedUser(c.Sender().ID, c.Chat().ID)
-		if err == nil && isApproved {
-			return next(c)
+		m.BlacklistCache.RLock()
+		approvedMap, ok := m.BlacklistCache.ApprovedUsers[c.Chat().ID]
+		if !ok {
+			m.BlacklistCache.RUnlock()
+			if err := m.LoadApprovedUsers(c.Chat().ID); err != nil {
+			}
+			m.BlacklistCache.RLock()
+			approvedMap = m.BlacklistCache.ApprovedUsers[c.Chat().ID]
 		}
 
-		items, err := m.Store.GetBlacklist(c.Chat().ID)
-		if err != nil {
-			return next(c)
+		if approvedMap != nil {
+			if _, exists := approvedMap[c.Sender().ID]; exists {
+				m.BlacklistCache.RUnlock()
+				return next(c)
+			}
+		}
+		m.BlacklistCache.RUnlock()
+
+		if approvedMap == nil {
+			isApproved, err := m.Store.IsApprovedUser(c.Sender().ID, c.Chat().ID)
+			if err == nil && isApproved {
+				return next(c)
+			}
 		}
 
-		for _, item := range items {
-			matched := false
+		m.BlacklistCache.RLock()
+		regexes, ok := m.BlacklistCache.Regexes[c.Chat().ID]
+		if !ok {
+			m.BlacklistCache.RUnlock()
+			if err := m.LoadBlacklistCache(c.Chat().ID); err != nil {
+				return next(c)
+			}
+			m.BlacklistCache.RLock()
+			regexes = m.BlacklistCache.Regexes[c.Chat().ID]
+		}
+		stickers := m.BlacklistCache.StickerSets[c.Chat().ID]
+		emojis := m.BlacklistCache.Emojis[c.Chat().ID]
+		m.BlacklistCache.RUnlock()
 
-			switch item.Type {
-			case "regex":
-				var re *regexp.Regexp
-				if val, ok := m.RegexCache.Load(item.Value); ok {
-					re = val.(*regexp.Regexp)
-				} else {
-					var err error
-					re, err = regexp.Compile(item.Value)
-					if err == nil {
-						m.RegexCache.Store(item.Value, re)
-					}
-				}
-
-				if re != nil {
-					matched = re.MatchString(c.Text())
-					if !matched && c.Message().Caption != "" {
-						matched = re.MatchString(c.Message().Caption)
-					}
-				}
-			case "sticker_set":
-				if c.Message().Sticker != nil {
-					if c.Message().Sticker.SetName == item.Value {
-						matched = true
-					}
-				}
-			case "emoji":
-				if c.Message().Entities != nil {
-					for _, entity := range c.Message().Entities {
-						if entity.Type == tele.EntityCustomEmoji {
-							if entity.CustomEmojiID == item.Value {
-								matched = true
-								break
-							}
-						}
+		for _, re := range regexes {
+			if re.MatchString(c.Text()) || (c.Message().Caption != "" && re.MatchString(c.Message().Caption)) {
+				items, _ := m.Store.GetBlacklist(c.Chat().ID)
+				for _, item := range items {
+					if item.Type == "regex" && item.Value == re.String() {
+						return m.executeBlacklistAction(c, item)
 					}
 				}
 			}
+		}
 
-			if matched {
+		if c.Message().Sticker != nil {
+			if item, exists := stickers[c.Message().Sticker.SetName]; exists {
 				return m.executeBlacklistAction(c, item)
+			}
+		}
+
+		if c.Message().Entities != nil {
+			for _, entity := range c.Message().Entities {
+				if entity.Type == tele.EntityCustomEmoji {
+					if item, exists := emojis[entity.CustomEmojiID]; exists {
+						return m.executeBlacklistAction(c, item)
+					}
+				}
 			}
 		}
 

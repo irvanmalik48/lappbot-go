@@ -21,6 +21,13 @@ func (m *Module) handleApprove(c tele.Context) error {
 		return c.Send("Failed to approve user: " + err.Error())
 	}
 
+	m.BlacklistCache.Lock()
+	if m.BlacklistCache.ApprovedUsers[c.Chat().ID] == nil {
+		m.BlacklistCache.ApprovedUsers[c.Chat().ID] = make(map[int64]struct{})
+	}
+	m.BlacklistCache.ApprovedUsers[c.Chat().ID][target.ID] = struct{}{}
+	m.BlacklistCache.Unlock()
+
 	return c.Send(fmt.Sprintf("%s is now approved.", mention(target)), tele.ModeMarkdown)
 }
 
@@ -37,6 +44,12 @@ func (m *Module) handleUnapprove(c tele.Context) error {
 	if err != nil {
 		return c.Send("Failed to unapprove user: " + err.Error())
 	}
+
+	m.BlacklistCache.Lock()
+	if m.BlacklistCache.ApprovedUsers[c.Chat().ID] != nil {
+		delete(m.BlacklistCache.ApprovedUsers[c.Chat().ID], target.ID)
+	}
+	m.BlacklistCache.Unlock()
 
 	return c.Send(fmt.Sprintf("%s is no longer approved.", mention(target)), tele.ModeMarkdown)
 }

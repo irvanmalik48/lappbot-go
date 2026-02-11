@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -167,7 +168,7 @@ func (s *Store) RemoveApprovedUser(userID, groupID int64) error {
 }
 
 func (s *Store) IsApprovedUser(userID, groupID int64) (bool, error) {
-	cacheKey := fmt.Sprintf("approved:%d:%d", groupID, userID)
+	cacheKey := "approved:" + strconv.FormatInt(groupID, 10) + ":" + strconv.FormatInt(userID, 10)
 	val, err := s.Valkey.Do(context.Background(), s.Valkey.B().Get().Key(cacheKey).Build()).ToString()
 	if err == nil {
 		return val == "1", nil
@@ -184,4 +185,23 @@ func (s *Store) IsApprovedUser(userID, groupID int64) (bool, error) {
 		s.Valkey.Do(context.Background(), s.Valkey.B().Set().Key(cacheKey).Value(v).Ex(10*time.Minute).Build())
 	}
 	return exists, err
+}
+
+func (s *Store) GetApprovedUsers(groupID int64) ([]int64, error) {
+	q := `SELECT user_id FROM approved_users WHERE group_id = $1`
+	rows, err := s.db.Query(context.Background(), q, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []int64
+	for rows.Next() {
+		var uid int64
+		if err := rows.Scan(&uid); err != nil {
+			return nil, err
+		}
+		users = append(users, uid)
+	}
+	return users, nil
 }
