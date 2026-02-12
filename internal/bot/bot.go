@@ -336,8 +336,9 @@ func (b *Bot) SetWebhook(url string) error {
 	req.Header.SetContentType("application/json")
 	req.SetRequestURI(b.APIURL + "/bot" + b.Token + "/setWebhook")
 
-	reqData := map[string]string{
-		"url": url,
+	reqData := map[string]any{
+		"url":                  url,
+		"drop_pending_updates": true,
 	}
 
 	buf := b.bufferPool.Get().(*bytes.Buffer)
@@ -362,7 +363,20 @@ func (b *Bot) DeleteWebhook() error {
 	defer fasthttp.ReleaseResponse(resp)
 
 	req.Header.SetMethod(fasthttp.MethodPost)
+	req.Header.SetContentType("application/json")
 	req.SetRequestURI(b.APIURL + "/bot" + b.Token + "/deleteWebhook")
+
+	reqData := map[string]bool{
+		"drop_pending_updates": true,
+	}
+
+	buf := b.bufferPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer b.bufferPool.Put(buf)
+	if err := json.NewEncoder(buf).Encode(reqData); err != nil {
+		return err
+	}
+	req.SetBody(buf.Bytes())
 
 	if err := b.Client.Do(req, resp); err != nil {
 		return err
