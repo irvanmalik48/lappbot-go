@@ -1,7 +1,8 @@
 package main
 
 import (
-	"log"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"lappbot/internal/bot"
 	"lappbot/internal/config"
@@ -21,16 +22,17 @@ import (
 )
 
 func main() {
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	cfg := config.Load()
 
 	st, err := store.New(cfg)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("failed to initialize store")
 	}
 
 	b, err := bot.New(cfg, st)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("failed to create bot")
 	}
 
 	utility.New(b, cfg).Register()

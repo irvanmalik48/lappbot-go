@@ -2,15 +2,15 @@ package store
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"log"
 	"strconv"
 	"time"
 
 	"lappbot/internal/config"
 
+	"github.com/goccy/go-json"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog/log"
 	"github.com/valkey-io/valkey-go"
 )
 
@@ -42,7 +42,7 @@ func New(cfg *config.Config) (*Store, error) {
 		return nil, fmt.Errorf("unable to ping database: %w", err)
 	}
 
-	log.Println("Database connection established")
+	log.Info().Msg("Database connection established")
 
 	vk, err := valkey.NewClient(valkey.ClientOption{
 		InitAddress: []string{fmt.Sprintf("%s:%d", cfg.ValkeyHost, cfg.ValkeyPort)},

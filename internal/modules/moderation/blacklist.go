@@ -248,7 +248,7 @@ func (m *Module) executeBlacklistAction(c *bot.Context, item store.BlacklistItem
 		})
 		return nil
 	case "hard_warn":
-		count, err := m.Store.AddWarn(c.Sender().ID, c.Chat().ID, "Blacklist violation: "+item.Type, m.Bot.Client.Timeout.Microseconds())
+		count, err := m.Store.AddWarn(c.Sender().ID, c.Chat().ID, "Blacklist violation: "+item.Type, 0)
 		if err != nil {
 			return nil
 		}

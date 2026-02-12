@@ -2,9 +2,10 @@ package store
 
 import (
 	"context"
-	"encoding/json"
 	"strconv"
 	"time"
+
+	"github.com/goccy/go-json"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )

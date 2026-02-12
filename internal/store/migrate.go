@@ -3,13 +3,13 @@ package store
 import (
 	"errors"
 	"fmt"
-	"log"
 
 	"lappbot/internal/config"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/rs/zerolog/log"
 )
 
 func RunMigrations(cfg *config.Config) error {
@@ -25,6 +25,6 @@ func RunMigrations(cfg *config.Config) error {
 		return fmt.Errorf("failed to run up migrations: %w", err)
 	}
 
-	log.Println("Migrations completed successfully")
+	log.Info().Msg("Migrations completed successfully")
 	return nil
 }

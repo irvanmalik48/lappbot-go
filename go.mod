@@ -3,10 +3,21 @@ module lappbot
 go 1.25.6
 
 require (
+	github.com/goccy/go-json v0.10.5
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/joho/godotenv v1.5.1
+	github.com/rs/zerolog v1.34.0
 	github.com/valkey-io/valkey-go v1.0.71
+)
+
+require (
+	github.com/andybalholm/brotli v1.2.0 // indirect
+	github.com/klauspost/compress v1.18.2 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	github.com/valyala/fasthttp v1.69.0 // indirect
 )
 
 require github.com/matoous/go-nanoid/v2 v2.1.0 // direct

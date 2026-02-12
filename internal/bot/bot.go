@@ -3,15 +3,15 @@ package bot
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"log"
-	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/goccy/go-json"
+	"github.com/rs/zerolog/log"
+	"github.com/valyala/fasthttp"
 
 	"lappbot/internal/config"
 	"lappbot/internal/store"
@@ -22,7 +22,7 @@ type HandlerFunc func(*Context) error
 type Bot struct {
 	Token       string
 	APIURL      string
-	Client      *http.Client
+	Client      *fasthttp.Client
 	Store       *store.Store
 	Cfg         *config.Config
 	StartTime   time.Time
@@ -33,13 +33,12 @@ type Bot struct {
 }
 
 func New(cfg *config.Config, store *store.Store) (*Bot, error) {
-	client := &http.Client{
-		Transport: &http.Transport{
-			MaxIdleConns:        100,
-			MaxIdleConnsPerHost: 100,
-			IdleConnTimeout:     90 * time.Second,
-		},
-		Timeout: 10 * time.Second,
+	client := &fasthttp.Client{
+		Name:                "Lappland",
+		MaxConnsPerHost:     100,
+		ReadTimeout:         90 * time.Second,
+		WriteTimeout:        10 * time.Second,
+		MaxIdleConnDuration: 90 * time.Second,
 	}
 
 	return &Bot{
@@ -71,81 +70,74 @@ func (b *Bot) Use(m func(HandlerFunc) HandlerFunc) {
 	b.Middleware = append(b.Middleware, m)
 }
 
-func (b *Bot) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+func (b *Bot) RequestHandler(ctx *fasthttp.RequestCtx) {
+	if !ctx.IsPost() {
+		ctx.SetStatusCode(fasthttp.StatusMethodNotAllowed)
 		return
 	}
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	r.Body.Close()
 
 	var update Update
-	if err := json.Unmarshal(body, &update); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	if err := json.Unmarshal(ctx.PostBody(), &update); err != nil {
+		ctx.SetStatusCode(fasthttp.StatusBadRequest)
 		return
 	}
 
-	ctx := b.contextPool.Get().(*Context)
-	ctx.Reset(b, &update)
-	defer b.contextPool.Put(ctx)
+	c := b.contextPool.Get().(*Context)
+	c.Reset(b, &update)
+	defer b.contextPool.Put(c)
 
 	if update.Message != nil {
-		ctx.Message = update.Message
+		c.Message = update.Message
 
 		if len(update.Message.NewChatMembers) > 0 {
 			if h, ok := b.Handlers["new_chat_members"]; ok {
-				go b.process(h, ctx)
+				go b.process(h, c)
 			}
 		}
 		if update.Message.LeftChatMember != nil {
 			if h, ok := b.Handlers["left_chat_member"]; ok {
-				go b.process(h, ctx)
+				go b.process(h, c)
 			}
 		}
 
-		parts := strings.Fields(ctx.Message.Text)
+		parts := strings.Fields(c.Message.Text)
 		if len(parts) > 0 {
-			ctx.Args = parts[1:]
+			c.Args = parts[1:]
 			cmd := parts[0]
 			if idx := strings.Index(cmd, "@"); idx != -1 {
 				cmd = cmd[:idx]
 			}
 			if h, ok := b.Handlers[cmd]; ok {
-				go b.process(h, ctx)
-				w.WriteHeader(http.StatusOK)
+				go b.process(h, c)
+				ctx.SetStatusCode(fasthttp.StatusOK)
 				return
 			}
 		}
 
 		if h, ok := b.Handlers["on_text"]; ok {
-			go b.process(h, ctx)
-			w.WriteHeader(http.StatusOK)
+			go b.process(h, c)
+			ctx.SetStatusCode(fasthttp.StatusOK)
 			return
 		}
 
 	} else if update.CallbackQuery != nil {
-		ctx.Callback = update.CallbackQuery
-		data := ctx.Callback.Data
+		c.Callback = update.CallbackQuery
+		data := c.Callback.Data
 
 		if h, ok := b.Handlers[data]; ok {
-			go b.process(h, ctx)
-			w.WriteHeader(http.StatusOK)
+			go b.process(h, c)
+			ctx.SetStatusCode(fasthttp.StatusOK)
 			return
 		}
 	}
 
-	w.WriteHeader(http.StatusOK)
+	ctx.SetStatusCode(fasthttp.StatusOK)
 }
 
 func (b *Bot) process(h HandlerFunc, ctx *Context) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("Panic in handler: %v", r)
+			log.Error().Interface("panic", r).Msg("Panic in handler")
 		}
 	}()
 
@@ -154,12 +146,19 @@ func (b *Bot) process(h HandlerFunc, ctx *Context) {
 		final = b.Middleware[i](final)
 	}
 	if err := final(ctx); err != nil {
-		log.Printf("Handler error: %v", err)
+		log.Error().Err(err).Msg("Handler error")
 	}
 }
 
 func (b *Bot) Raw(method string, payload any) error {
-	url := b.APIURL + "/bot" + b.Token + "/" + method
+	req := fasthttp.AcquireRequest()
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(resp)
+
+	req.Header.SetMethod(fasthttp.MethodPost)
+	req.Header.SetContentType("application/json")
+	req.SetRequestURI(b.APIURL + "/bot" + b.Token + "/" + method)
 
 	buf := b.bufferPool.Get().(*bytes.Buffer)
 	buf.Reset()
@@ -168,14 +167,9 @@ func (b *Bot) Raw(method string, payload any) error {
 	if err := json.NewEncoder(buf).Encode(payload); err != nil {
 		return err
 	}
+	req.SetBody(buf.Bytes())
 
-	resp, err := b.Client.Post(url, "application/json", buf)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	return nil
+	return b.Client.Do(req, resp)
 }
 
 func (b *Bot) IsAdmin(chat *Chat, user *User) bool {
@@ -191,29 +185,38 @@ func (b *Bot) IsAdmin(chat *Chat, user *User) bool {
 		return val == "1"
 	}
 
-	req := map[string]any{
+	req := fasthttp.AcquireRequest()
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(resp)
+
+	req.Header.SetMethod(fasthttp.MethodPost)
+	req.Header.SetContentType("application/json")
+	req.SetRequestURI(b.APIURL + "/bot" + b.Token + "/getChatMember")
+
+	reqData := map[string]any{
 		"chat_id": chat.ID,
 		"user_id": user.ID,
 	}
-	url := b.APIURL + "/bot" + b.Token + "/getChatMember"
 
 	buf := b.bufferPool.Get().(*bytes.Buffer)
 	buf.Reset()
-	json.NewEncoder(buf).Encode(req)
+	defer b.bufferPool.Put(buf)
 
-	resp, err := b.Client.Post(url, "application/json", buf)
-	b.bufferPool.Put(buf)
-
-	if err != nil {
+	if err := json.NewEncoder(buf).Encode(reqData); err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	req.SetBody(buf.Bytes())
+
+	if err := b.Client.Do(req, resp); err != nil {
+		return false
+	}
 
 	var res struct {
 		Ok     bool       `json:"ok"`
 		Result ChatMember `json:"result"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := json.Unmarshal(resp.Body(), &res); err != nil {
 		return false
 	}
 
@@ -233,6 +236,15 @@ func (b *Bot) InvalidateAdminCache(chatID, userID int64) {
 }
 
 func (b *Bot) ResolveChat(identity string) (*Chat, error) {
+	req := fasthttp.AcquireRequest()
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(resp)
+
+	req.Header.SetMethod(fasthttp.MethodPost)
+	req.Header.SetContentType("application/json")
+	req.SetRequestURI(b.APIURL + "/bot" + b.Token + "/getChat")
+
 	var body []byte
 	if id, err := strconv.ParseInt(identity, 10, 64); err == nil {
 		body = fmt.Appendf(nil, `{"chat_id": %d}`, id)
@@ -240,19 +252,17 @@ func (b *Bot) ResolveChat(identity string) (*Chat, error) {
 		jsonIdentity, _ := json.Marshal(identity)
 		body = fmt.Appendf(nil, `{"chat_id": %s}`, jsonIdentity)
 	}
+	req.SetBody(body)
 
-	url := b.APIURL + "/bot" + b.Token + "/getChat"
-	resp, err := b.Client.Post(url, "application/json", bytes.NewReader(body))
-	if err != nil {
+	if err := b.Client.Do(req, resp); err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	var res struct {
 		Ok     bool `json:"ok"`
 		Result Chat `json:"result"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := json.Unmarshal(resp.Body(), &res); err != nil {
 		return nil, err
 	}
 	if !res.Ok {
@@ -273,12 +283,12 @@ func (b *Bot) GetTargetChat(c *Context) (*Chat, error) {
 }
 
 func (b *Bot) Start() {
-	log.Println("Bot started in Long Polling mode")
+	log.Info().Msg("Bot started in Long Polling mode")
 	var offset int64 = 0
 	for {
 		updates, err := b.getUpdates(offset)
 		if err != nil {
-			log.Printf("Error getting updates: %v", err)
+			log.Error().Err(err).Msg("Error getting updates")
 			time.Sleep(3 * time.Second)
 			continue
 		}
@@ -294,31 +304,38 @@ func (b *Bot) Start() {
 }
 
 func (b *Bot) getUpdates(offset int64) ([]Update, error) {
-	req := map[string]any{
+	req := fasthttp.AcquireRequest()
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(resp)
+
+	req.Header.SetMethod(fasthttp.MethodPost)
+	req.Header.SetContentType("application/json")
+	req.SetRequestURI(b.APIURL + "/bot" + b.Token + "/getUpdates")
+
+	reqData := map[string]any{
 		"offset":  offset,
 		"timeout": 30,
 	}
-	url := b.APIURL + "/bot" + b.Token + "/getUpdates"
 
 	buf := b.bufferPool.Get().(*bytes.Buffer)
 	buf.Reset()
 	defer b.bufferPool.Put(buf)
 
-	if err := json.NewEncoder(buf).Encode(req); err != nil {
+	if err := json.NewEncoder(buf).Encode(reqData); err != nil {
 		return nil, err
 	}
+	req.SetBody(buf.Bytes())
 
-	resp, err := b.Client.Post(url, "application/json", buf)
-	if err != nil {
+	if err := b.Client.Do(req, resp); err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	var res struct {
 		Ok     bool     `json:"ok"`
 		Result []Update `json:"result"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := json.Unmarshal(resp.Body(), &res); err != nil {
 		return nil, err
 	}
 	if !res.Ok {
