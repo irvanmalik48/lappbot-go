@@ -73,7 +73,8 @@ func (m *Module) handleHelp(c *bot.Context) error {
 
 func (m *Module) onHelpCallback(c *bot.Context) error {
 	c.Respond()
-	text, markup := m.getHelpMenu(c.Data())
+	data := strings.TrimPrefix(c.Data(), "help_")
+	text, markup := m.getHelpMenu(data)
 	return c.Edit(text, markup, "Markdown")
 }
 
