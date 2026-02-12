@@ -106,18 +106,18 @@ func (m *Module) takeAction(c *bot.Context, group *store.Group) {
 
 	switch action {
 	case "ban":
-		err = c.Bot.Raw("banChatMember", map[string]interface{}{
+		err = c.Bot.Raw("banChatMember", map[string]any{
 			"chat_id": c.Chat().ID,
 			"user_id": c.Sender().ID,
 		})
 	case "kick":
-		err = c.Bot.Raw("unbanChatMember", map[string]interface{}{
+		err = c.Bot.Raw("unbanChatMember", map[string]any{
 			"chat_id": c.Chat().ID,
 			"user_id": c.Sender().ID,
 		})
 	case "mute":
 		permissions = map[string]bool{"can_send_messages": false}
-		err = c.Bot.Raw("restrictChatMember", map[string]interface{}{
+		err = c.Bot.Raw("restrictChatMember", map[string]any{
 			"chat_id":     c.Chat().ID,
 			"user_id":     c.Sender().ID,
 			"permissions": permissions,
@@ -126,7 +126,7 @@ func (m *Module) takeAction(c *bot.Context, group *store.Group) {
 	case "tban":
 		d, _ := time.ParseDuration(duration)
 		until = time.Now().Add(d)
-		err = c.Bot.Raw("banChatMember", map[string]interface{}{
+		err = c.Bot.Raw("banChatMember", map[string]any{
 			"chat_id":    c.Chat().ID,
 			"user_id":    c.Sender().ID,
 			"until_date": until.Unix(),
@@ -135,7 +135,7 @@ func (m *Module) takeAction(c *bot.Context, group *store.Group) {
 		d, _ := time.ParseDuration(duration)
 		until = time.Now().Add(d)
 		permissions = map[string]bool{"can_send_messages": false}
-		err = c.Bot.Raw("restrictChatMember", map[string]interface{}{
+		err = c.Bot.Raw("restrictChatMember", map[string]any{
 			"chat_id":     c.Chat().ID,
 			"user_id":     c.Sender().ID,
 			"permissions": permissions,
@@ -143,7 +143,7 @@ func (m *Module) takeAction(c *bot.Context, group *store.Group) {
 		})
 	default:
 		permissions = map[string]bool{"can_send_messages": false}
-		err = c.Bot.Raw("restrictChatMember", map[string]interface{}{
+		err = c.Bot.Raw("restrictChatMember", map[string]any{
 			"chat_id":     c.Chat().ID,
 			"user_id":     c.Sender().ID,
 			"permissions": permissions,

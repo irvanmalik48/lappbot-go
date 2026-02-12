@@ -20,7 +20,7 @@ type Note struct {
 	Type      string
 	FileID    string
 	CreatedBy int64
-	CreatedAt interface{}
+	CreatedAt any
 }
 
 func (s *Store) SaveNote(chatID int64, name, content, noteType, fileID string, createdBy int64) error {

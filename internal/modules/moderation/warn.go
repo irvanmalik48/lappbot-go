@@ -45,7 +45,7 @@ func (m *Module) warnUser(c *bot.Context, deleteMessage, silent bool) error {
 	}
 
 	if deleteMessage {
-		m.Bot.Raw("deleteMessage", map[string]interface{}{
+		m.Bot.Raw("deleteMessage", map[string]any{
 			"chat_id":    c.Chat().ID,
 			"message_id": c.Message.ReplyTo.ID,
 		})
@@ -94,28 +94,28 @@ func (m *Module) checkPunish(c *bot.Context, target *bot.User, reason string, si
 
 		switch actType {
 		case "ban":
-			err = m.Bot.Raw("banChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": target.ID})
+			err = m.Bot.Raw("banChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": target.ID})
 			msg += "\nAction: Banned."
 		case "kick":
-			err = m.Bot.Raw("unbanChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": target.ID})
+			err = m.Bot.Raw("unbanChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": target.ID})
 			msg += "\nAction: Kicked."
 		case "mute":
 			permissions := map[string]bool{"can_send_messages": false}
-			err = m.Bot.Raw("restrictChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": target.ID, "permissions": permissions, "until_date": 0})
+			err = m.Bot.Raw("restrictChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": target.ID, "permissions": permissions, "until_date": 0})
 			msg += "\nAction: Muted."
 		case "tban":
 			d, _ := time.ParseDuration(duration)
 			until := time.Now().Add(d).Unix()
-			err = m.Bot.Raw("banChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": target.ID, "until_date": until})
+			err = m.Bot.Raw("banChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": target.ID, "until_date": until})
 			msg += fmt.Sprintf("\nAction: Banned for %s.", duration)
 		case "tmute":
 			d, _ := time.ParseDuration(duration)
 			until := time.Now().Add(d).Unix()
 			permissions := map[string]bool{"can_send_messages": false}
-			err = m.Bot.Raw("restrictChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": target.ID, "permissions": permissions, "until_date": until})
+			err = m.Bot.Raw("restrictChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": target.ID, "permissions": permissions, "until_date": until})
 			msg += fmt.Sprintf("\nAction: Muted for %s.", duration)
 		default:
-			err = m.Bot.Raw("unbanChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": target.ID})
+			err = m.Bot.Raw("unbanChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": target.ID})
 			msg += "\nAction: Kicked (Default)."
 		}
 

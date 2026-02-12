@@ -68,7 +68,7 @@ func (m *Module) handlePromote(c *bot.Context) error {
 		title = strings.Join(args, " ")
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"chat_id":                c.Chat().ID,
 		"user_id":                target.ID,
 		"is_anonymous":           false,
@@ -89,7 +89,7 @@ func (m *Module) handlePromote(c *bot.Context) error {
 		return c.Send("Failed to promote user: " + err.Error())
 	}
 
-	m.Bot.Raw("setChatAdministratorCustomTitle", map[string]interface{}{
+	m.Bot.Raw("setChatAdministratorCustomTitle", map[string]any{
 		"chat_id":      c.Chat().ID,
 		"user_id":      target.ID,
 		"custom_title": title,
@@ -108,7 +108,7 @@ func (m *Module) handleDemote(c *bot.Context) error {
 	}
 	target := c.Message.ReplyTo.From
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"chat_id":                c.Chat().ID,
 		"user_id":                target.ID,
 		"is_anonymous":           false,

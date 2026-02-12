@@ -16,7 +16,7 @@ func (m *Module) handleLock(c *bot.Context) error {
 		"can_send_other_messages": false,
 	}
 
-	err := m.Bot.Raw("setChatPermissions", map[string]interface{}{
+	err := m.Bot.Raw("setChatPermissions", map[string]any{
 		"chat_id":     c.Chat().ID,
 		"permissions": permissions,
 	})
@@ -41,7 +41,7 @@ func (m *Module) handleUnlock(c *bot.Context) error {
 		"can_invite_users":          true,
 	}
 
-	err := m.Bot.Raw("setChatPermissions", map[string]interface{}{
+	err := m.Bot.Raw("setChatPermissions", map[string]any{
 		"chat_id":     c.Chat().ID,
 		"permissions": permissions,
 	})

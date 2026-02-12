@@ -67,7 +67,7 @@ func (m *Module) banUserRaw(chatID, userID int64, durationStr string) error {
 	}
 
 	until := time.Now().Add(duration).Unix()
-	return m.Bot.Raw("banChatMember", map[string]interface{}{
+	return m.Bot.Raw("banChatMember", map[string]any{
 		"chat_id":    chatID,
 		"user_id":    userID,
 		"until_date": until,

@@ -241,7 +241,7 @@ func (m *Module) executeBlacklistAction(c *bot.Context, item store.BlacklistItem
 	case "delete":
 		return nil
 	case "soft_warn":
-		m.Bot.Raw("sendMessage", map[string]interface{}{
+		m.Bot.Raw("sendMessage", map[string]any{
 			"chat_id":    c.Chat().ID,
 			"text":       fmt.Sprintf("%s, that is not allowed here.", mention(c.Sender())),
 			"parse_mode": "Markdown",
@@ -254,15 +254,15 @@ func (m *Module) executeBlacklistAction(c *bot.Context, item store.BlacklistItem
 		}
 		msg := fmt.Sprintf("%s has been warned (Blacklist).\nTotal Warns: %d/3", mention(c.Sender()), count)
 		if count >= 3 {
-			m.Bot.Raw("banChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": c.Sender().ID})
-			m.Bot.Raw("unbanChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": c.Sender().ID, "only_if_banned": true})
+			m.Bot.Raw("banChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": c.Sender().ID})
+			m.Bot.Raw("unbanChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": c.Sender().ID, "only_if_banned": true})
 			m.Store.ResetWarns(c.Sender().ID, c.Chat().ID)
 			msg += "\nUser kicked (limit reached)."
 		}
 		c.Send(msg)
 		return nil
 	case "kick":
-		m.Bot.Raw("unbanChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": c.Sender().ID})
+		m.Bot.Raw("unbanChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": c.Sender().ID})
 		c.Send(fmt.Sprintf("%s kicked for blacklist violation.", mention(c.Sender())))
 		return nil
 	case "mute":
@@ -280,7 +280,7 @@ func (m *Module) executeBlacklistAction(c *bot.Context, item store.BlacklistItem
 			"can_send_polls":          false,
 			"can_send_other_messages": false,
 		}
-		m.Bot.Raw("restrictChatMember", map[string]interface{}{
+		m.Bot.Raw("restrictChatMember", map[string]any{
 			"chat_id":     c.Chat().ID,
 			"user_id":     c.Sender().ID,
 			"permissions": permissions,
@@ -289,7 +289,7 @@ func (m *Module) executeBlacklistAction(c *bot.Context, item store.BlacklistItem
 		c.Send(fmt.Sprintf("%s muted for %v (Blacklist violation).", mention(c.Sender()), duration))
 		return nil
 	case "ban":
-		m.Bot.Raw("banChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": c.Sender().ID})
+		m.Bot.Raw("banChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": c.Sender().ID})
 		c.Send(fmt.Sprintf("%s banned for blacklist violation.", mention(c.Sender())))
 		return nil
 	}

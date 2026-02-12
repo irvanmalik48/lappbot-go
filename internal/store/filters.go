@@ -16,7 +16,7 @@ type Filter struct {
 	GroupID   int64
 	Trigger   string
 	Response  string
-	CreatedAt interface{}
+	CreatedAt any
 }
 
 func (s *Store) AddFilter(groupID int64, trigger, response string) error {

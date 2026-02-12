@@ -42,7 +42,7 @@ func (m *Module) muteUser(c *bot.Context, silent bool) error {
 		"can_send_other_messages": false,
 	}
 
-	err := m.Bot.Raw("restrictChatMember", map[string]interface{}{
+	err := m.Bot.Raw("restrictChatMember", map[string]any{
 		"chat_id":     c.Chat().ID,
 		"user_id":     target.ID,
 		"permissions": permissions,
@@ -77,7 +77,7 @@ func (m *Module) handleUnmute(c *bot.Context) error {
 		"can_invite_users":          true,
 	}
 
-	err := m.Bot.Raw("restrictChatMember", map[string]interface{}{
+	err := m.Bot.Raw("restrictChatMember", map[string]any{
 		"chat_id":     c.Chat().ID,
 		"user_id":     target.ID,
 		"permissions": permissions,
@@ -127,7 +127,7 @@ func (m *Module) handleTimedMute(c *bot.Context) error {
 		"can_send_other_messages": false,
 	}
 
-	err = m.Bot.Raw("restrictChatMember", map[string]interface{}{
+	err = m.Bot.Raw("restrictChatMember", map[string]any{
 		"chat_id":     c.Chat().ID,
 		"user_id":     target.ID,
 		"permissions": permissions,
@@ -182,7 +182,7 @@ func (m *Module) handleRealmMute(c *bot.Context) error {
 	for _, g := range groups {
 		m.Store.BanUser(target.ID, g.TelegramID, time.Time{}, reasonStr, c.Sender().ID, "mute")
 
-		err := m.Bot.Raw("restrictChatMember", map[string]interface{}{
+		err := m.Bot.Raw("restrictChatMember", map[string]any{
 			"chat_id":     g.TelegramID,
 			"user_id":     target.ID,
 			"permissions": permissions,

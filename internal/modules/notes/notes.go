@@ -206,7 +206,7 @@ func (m *Module) onGetNotePM(c *bot.Context) error {
 }
 
 func (m *Module) deliverNote(chatID int64, note *store.Note) error {
-	req := map[string]interface{}{
+	req := map[string]any{
 		"chat_id": chatID,
 	}
 

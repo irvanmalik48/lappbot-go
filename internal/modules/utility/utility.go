@@ -260,7 +260,7 @@ func (m *Module) handleReport(c *bot.Context) error {
 	}
 
 	if targetID != 0 {
-		payload := map[string]interface{}{
+		payload := map[string]any{
 			"chat_id":    targetID,
 			"text":       reportMsg,
 			"parse_mode": "Markdown",

@@ -33,7 +33,7 @@ func (m *Module) kickUser(c *bot.Context, silent bool) error {
 		reasonStr = strings.Join(reason, " ")
 	}
 
-	err := m.Bot.Raw("unbanChatMember", map[string]interface{}{
+	err := m.Bot.Raw("unbanChatMember", map[string]any{
 		"chat_id": c.Chat().ID,
 		"user_id": target.ID,
 	})
@@ -76,7 +76,7 @@ func (m *Module) banUser(c *bot.Context, silent bool) error {
 
 	m.Store.BanUser(target.ID, c.Chat().ID, time.Time{}, reasonStr, c.Sender().ID, "ban")
 
-	err := m.Bot.Raw("banChatMember", map[string]interface{}{
+	err := m.Bot.Raw("banChatMember", map[string]any{
 		"chat_id": c.Chat().ID,
 		"user_id": target.ID,
 	})
@@ -100,7 +100,7 @@ func (m *Module) handleUnban(c *bot.Context) error {
 	}
 	target := c.Message.ReplyTo.From
 
-	err := m.Bot.Raw("unbanChatMember", map[string]interface{}{
+	err := m.Bot.Raw("unbanChatMember", map[string]any{
 		"chat_id":        c.Chat().ID,
 		"user_id":        target.ID,
 		"only_if_banned": true,
@@ -143,7 +143,7 @@ func (m *Module) handleTimedBan(c *bot.Context) error {
 
 	m.Store.BanUser(target.ID, c.Chat().ID, until, reasonStr, c.Sender().ID, "ban")
 
-	err = m.Bot.Raw("banChatMember", map[string]interface{}{
+	err = m.Bot.Raw("banChatMember", map[string]any{
 		"chat_id":    c.Chat().ID,
 		"user_id":    target.ID,
 		"until_date": until.Unix(),
@@ -190,7 +190,7 @@ func (m *Module) handleRealmBan(c *bot.Context) error {
 	for _, g := range groups {
 		m.Store.BanUser(target.ID, g.TelegramID, time.Time{}, reasonStr, c.Sender().ID, "ban")
 
-		err := m.Bot.Raw("banChatMember", map[string]interface{}{
+		err := m.Bot.Raw("banChatMember", map[string]any{
 			"chat_id": g.TelegramID,
 			"user_id": target.ID,
 		})

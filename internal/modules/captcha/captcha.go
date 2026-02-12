@@ -53,7 +53,7 @@ func (m *Module) CheckCaptcha(next bot.HandlerFunc) bot.HandlerFunc {
 				"can_send_other_messages":   true,
 				"can_add_web_page_previews": true,
 			}
-			m.Bot.Raw("restrictChatMember", map[string]interface{}{
+			m.Bot.Raw("restrictChatMember", map[string]any{
 				"chat_id":     c.Chat().ID,
 				"user_id":     c.Sender().ID,
 				"permissions": permissions,
@@ -66,7 +66,7 @@ func (m *Module) CheckCaptcha(next bot.HandlerFunc) bot.HandlerFunc {
 			if msgIDStr != "" {
 				var msgID int
 				fmt.Sscanf(msgIDStr, "%d", &msgID)
-				m.Bot.Raw("deleteMessage", map[string]interface{}{
+				m.Bot.Raw("deleteMessage", map[string]any{
 					"chat_id":    c.Chat().ID,
 					"message_id": msgID,
 				})
@@ -109,7 +109,7 @@ func (m *Module) OnUserJoined(c *bot.Context) error {
 			"can_send_other_messages":   false,
 			"can_add_web_page_previews": false,
 		}
-		m.Bot.Raw("restrictChatMember", map[string]interface{}{
+		m.Bot.Raw("restrictChatMember", map[string]any{
 			"chat_id":     c.Chat().ID,
 			"user_id":     u.ID,
 			"permissions": permissions,
@@ -142,7 +142,7 @@ func (m *Module) OnUserJoined(c *bot.Context) error {
 			caption = fmt.Sprintf("Welcome! Please type this code to verify: %s", code)
 		}
 
-		m.Bot.Raw("sendMessage", map[string]interface{}{
+		m.Bot.Raw("sendMessage", map[string]any{
 			"chat_id": c.Chat().ID,
 			"text":    caption,
 		})

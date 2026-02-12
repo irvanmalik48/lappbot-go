@@ -42,7 +42,7 @@ func (m *Module) deleteMessages(chatID int64, messageIDs []int) {
 		}
 		batch := messageIDs[i:end]
 
-		req := map[string]interface{}{
+		req := map[string]any{
 			"chat_id":     chatID,
 			"message_ids": batch,
 		}

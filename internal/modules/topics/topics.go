@@ -72,7 +72,7 @@ func (m *Module) handleNewTopic(c *bot.Context) error {
 
 	topicName := strings.Join(name, " ")
 
-	req := map[string]interface{}{
+	req := map[string]any{
 		"chat_id": c.Chat().ID,
 		"name":    topicName,
 	}
@@ -101,7 +101,7 @@ func (m *Module) handleRenameTopic(c *bot.Context) error {
 	}
 
 	topicName := strings.Join(name, " ")
-	req := map[string]interface{}{
+	req := map[string]any{
 		"chat_id":           c.Chat().ID,
 		"message_thread_id": topicID,
 		"name":              topicName,
@@ -125,7 +125,7 @@ func (m *Module) handleCloseTopic(c *bot.Context) error {
 		return c.Send("This command must be used in a topic.")
 	}
 
-	req := map[string]interface{}{
+	req := map[string]any{
 		"chat_id":           c.Chat().ID,
 		"message_thread_id": topicID,
 	}
@@ -148,7 +148,7 @@ func (m *Module) handleReopenTopic(c *bot.Context) error {
 		return c.Send("This command must be used in a topic.")
 	}
 
-	req := map[string]interface{}{
+	req := map[string]any{
 		"chat_id":           c.Chat().ID,
 		"message_thread_id": topicID,
 	}
@@ -171,7 +171,7 @@ func (m *Module) handleDeleteTopic(c *bot.Context) error {
 		return c.Send("This command must be used in a topic.")
 	}
 
-	req := map[string]interface{}{
+	req := map[string]any{
 		"chat_id":           c.Chat().ID,
 		"message_thread_id": topicID,
 	}

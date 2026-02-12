@@ -16,8 +16,8 @@ func (c *Context) Reset(b *Bot, u *Update) {
 	c.Args = nil
 }
 
-func (c *Context) Send(text string, opts ...interface{}) error {
-	req := map[string]interface{}{
+func (c *Context) Send(text string, opts ...any) error {
+	req := map[string]any{
 		"chat_id": c.Chat().ID,
 		"text":    text,
 	}
@@ -34,8 +34,8 @@ func (c *Context) Send(text string, opts ...interface{}) error {
 	return c.Bot.Raw("sendMessage", req)
 }
 
-func (c *Context) Reply(text string, opts ...interface{}) error {
-	req := map[string]interface{}{
+func (c *Context) Reply(text string, opts ...any) error {
+	req := map[string]any{
 		"chat_id":             c.Chat().ID,
 		"text":                text,
 		"reply_to_message_id": c.Message.ID,
@@ -54,15 +54,15 @@ func (c *Context) Reply(text string, opts ...interface{}) error {
 func (c *Context) Delete() error {
 	msgID := c.Message.ID
 	chatID := c.Chat().ID
-	return c.Bot.Raw("deleteMessage", map[string]interface{}{
+	return c.Bot.Raw("deleteMessage", map[string]any{
 		"chat_id":    chatID,
 		"message_id": msgID,
 	})
 }
 
-func (c *Context) Edit(text string, opts ...interface{}) error {
+func (c *Context) Edit(text string, opts ...any) error {
 	if c.Callback != nil && c.Callback.Message != nil {
-		req := map[string]interface{}{
+		req := map[string]any{
 			"chat_id":    c.Callback.Message.Chat.ID,
 			"message_id": c.Callback.Message.ID,
 			"text":       text,
@@ -80,11 +80,11 @@ func (c *Context) Edit(text string, opts ...interface{}) error {
 	return nil
 }
 
-func (c *Context) Respond(opts ...interface{}) error {
+func (c *Context) Respond(opts ...any) error {
 	if c.Callback == nil {
 		return nil
 	}
-	req := map[string]interface{}{
+	req := map[string]any{
 		"callback_query_id": c.Callback.ID,
 	}
 	for _, opt := range opts {

@@ -14,7 +14,7 @@ func (m *Module) handlePin(c *bot.Context) error {
 
 	msgID := c.Message.ReplyTo.ID
 
-	err := m.Bot.Raw("pinChatMessage", map[string]interface{}{
+	err := m.Bot.Raw("pinChatMessage", map[string]any{
 		"chat_id":    c.Chat().ID,
 		"message_id": msgID,
 	})

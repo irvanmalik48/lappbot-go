@@ -51,12 +51,12 @@ func New(cfg *config.Config, store *store.Store) (*Bot, error) {
 		StartTime: time.Now(),
 		Handlers:  make(map[string]HandlerFunc),
 		bufferPool: sync.Pool{
-			New: func() interface{} {
+			New: func() any {
 				return bytes.NewBuffer(make([]byte, 0, 512))
 			},
 		},
 		contextPool: sync.Pool{
-			New: func() interface{} {
+			New: func() any {
 				return &Context{}
 			},
 		},
@@ -158,7 +158,7 @@ func (b *Bot) process(h HandlerFunc, ctx *Context) {
 	}
 }
 
-func (b *Bot) Raw(method string, payload interface{}) error {
+func (b *Bot) Raw(method string, payload any) error {
 	url := b.APIURL + "/bot" + b.Token + "/" + method
 
 	buf := b.bufferPool.Get().(*bytes.Buffer)
@@ -191,7 +191,7 @@ func (b *Bot) IsAdmin(chat *Chat, user *User) bool {
 		return val == "1"
 	}
 
-	req := map[string]interface{}{
+	req := map[string]any{
 		"chat_id": chat.ID,
 		"user_id": user.ID,
 	}
@@ -294,7 +294,7 @@ func (b *Bot) Start() {
 }
 
 func (b *Bot) getUpdates(offset int64) ([]Update, error) {
-	req := map[string]interface{}{
+	req := map[string]any{
 		"offset":  offset,
 		"timeout": 30,
 	}

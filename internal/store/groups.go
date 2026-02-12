@@ -33,7 +33,7 @@ type Group struct {
 	WarnDuration              string
 	NotesPrivate              bool
 	ActionTopicID             *int64
-	CreatedAt                 interface{}
+	CreatedAt                 any
 }
 
 func (s *Store) GetGroup(telegramID int64) (*Group, error) {
