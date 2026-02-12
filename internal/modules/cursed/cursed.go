@@ -97,9 +97,10 @@ func uwuify(text string) string {
 	text = strings.ToLower(text)
 	text = strings.ReplaceAll(text, "r", "w")
 	text = strings.ReplaceAll(text, "l", "w")
+	text = strings.ReplaceAll(text, "m", "mw")
 	text = strings.ReplaceAll(text, "ove", "uv")
 
-	faces := []string{"(・`ω´・)", ";;w;;", "OwO", "UwU", ">w<", "^w^", "(｡♥‿♥｡)", "o3o"}
+	faces := []string{"(・`ω´・)", ";;w;;", "OwO", "UwU", ">w<", "^w^", "(˶>⩊<˶)", "(,,>﹏<,,)👉👈"}
 
 	var result strings.Builder
 	for _, char := range text {
