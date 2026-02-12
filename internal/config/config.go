@@ -27,6 +27,11 @@ type Config struct {
 	TelegramAPIID   int
 	TelegramAPIHash string
 	ReportChannelID int64
+
+	UseWebhook  bool
+	WebhookURL  string
+	WebhookPort int
+	WebhookPath string
 }
 
 func Load() *Config {
@@ -34,6 +39,8 @@ func Load() *Config {
 	if err != nil {
 		log.Warn().Msg("Error loading .env file")
 	}
+
+	webhookURL := getEnv("WEBHOOK_URL", "")
 
 	return &Config{
 		BotToken:   getEnv("BOT_TOKEN", ""),
@@ -54,6 +61,11 @@ func Load() *Config {
 		TelegramAPIID:   getEnvAsInt("TELEGRAM_API_ID", 0),
 		TelegramAPIHash: getEnv("TELEGRAM_API_HASH", ""),
 		ReportChannelID: getEnvAsInt64("REPORT_CHANNEL_ID", 0),
+
+		UseWebhook:  webhookURL != "",
+		WebhookURL:  webhookURL,
+		WebhookPort: getEnvAsInt("WEBHOOK_PORT", 8080),
+		WebhookPath: getEnv("WEBHOOK_PATH", "/webhook"),
 	}
 }
 

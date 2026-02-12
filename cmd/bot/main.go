@@ -48,5 +48,9 @@ func main() {
 	notes.New(b, st).Register()
 	purge.New(b, st).Register()
 
-	b.Start()
+	if cfg.UseWebhook {
+		b.StartWebhook()
+	} else {
+		b.StartLongPolling()
+	}
 }

@@ -282,7 +282,10 @@ func (b *Bot) GetTargetChat(c *Context) (*Chat, error) {
 	return c.Chat(), nil
 }
 
-func (b *Bot) Start() {
+func (b *Bot) StartLongPolling() {
+	if err := b.DeleteWebhook(); err != nil {
+		log.Error().Err(err).Msg("Failed to delete webhook before long polling")
+	}
 	log.Info().Msg("Bot started in Long Polling mode")
 	var offset int64 = 0
 	for {
@@ -301,6 +304,71 @@ func (b *Bot) Start() {
 			b.processUpdate(&update)
 		}
 	}
+}
+
+func (b *Bot) StartWebhook() {
+	if err := b.SetWebhook(b.Cfg.WebhookURL + b.Cfg.WebhookPath); err != nil {
+		log.Fatal().Err(err).Msg("Failed to set webhook")
+	}
+	log.Info().Msgf("Bot started in Webhook mode on port %d", b.Cfg.WebhookPort)
+
+	requestHandler := func(ctx *fasthttp.RequestCtx) {
+		switch string(ctx.Path()) {
+		case b.Cfg.WebhookPath:
+			b.RequestHandler(ctx)
+		default:
+			ctx.Error("not found", fasthttp.StatusNotFound)
+		}
+	}
+
+	if err := fasthttp.ListenAndServe(fmt.Sprintf(":%d", b.Cfg.WebhookPort), requestHandler); err != nil {
+		log.Fatal().Err(err).Msg("Error in Serve")
+	}
+}
+
+func (b *Bot) SetWebhook(url string) error {
+	req := fasthttp.AcquireRequest()
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(resp)
+
+	req.Header.SetMethod(fasthttp.MethodPost)
+	req.Header.SetContentType("application/json")
+	req.SetRequestURI(b.APIURL + "/bot" + b.Token + "/setWebhook")
+
+	reqData := map[string]string{
+		"url": url,
+	}
+
+	buf := b.bufferPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer b.bufferPool.Put(buf)
+	if err := json.NewEncoder(buf).Encode(reqData); err != nil {
+		return err
+	}
+	req.SetBody(buf.Bytes())
+
+	if err := b.Client.Do(req, resp); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (b *Bot) DeleteWebhook() error {
+	req := fasthttp.AcquireRequest()
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(resp)
+
+	req.Header.SetMethod(fasthttp.MethodPost)
+	req.SetRequestURI(b.APIURL + "/bot" + b.Token + "/deleteWebhook")
+
+	if err := b.Client.Do(req, resp); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (b *Bot) getUpdates(offset int64) ([]Update, error) {
