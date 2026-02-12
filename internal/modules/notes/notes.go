@@ -6,8 +6,6 @@ import (
 
 	"lappbot/internal/bot"
 	"lappbot/internal/store"
-
-	tele "gopkg.in/telebot.v4"
 )
 
 type Module struct {
@@ -20,19 +18,19 @@ func New(b *bot.Bot, s *store.Store) *Module {
 }
 
 func (m *Module) Register() {
-	m.Bot.Bot.Handle("/save", m.handleSave)
-	m.Bot.Bot.Handle("/get", m.handleGet)
-	m.Bot.Bot.Handle("/clear", m.handleClear)
-	m.Bot.Bot.Handle("/notes", m.handleNotes)
-	m.Bot.Bot.Handle("/saved", m.handleNotes)
-	m.Bot.Bot.Handle("/clearall", m.handleClearAll)
-	m.Bot.Bot.Handle("/privatenotes", m.handlePrivateNotes)
-	m.Bot.Bot.Handle(&tele.Btn{Unique: "get_note_pm"}, m.onGetNotePM)
-	m.Bot.Bot.Use(m.shortcutMiddleware)
+	m.Bot.Handle("/save", m.handleSave)
+	m.Bot.Handle("/get", m.handleGet)
+	m.Bot.Handle("/clear", m.handleClear)
+	m.Bot.Handle("/notes", m.handleNotes)
+	m.Bot.Handle("/saved", m.handleNotes)
+	m.Bot.Handle("/clearall", m.handleClearAll)
+	m.Bot.Handle("/privatenotes", m.handlePrivateNotes)
+	m.Bot.Handle("get_note_pm", m.onGetNotePM)
+	m.Bot.Use(m.shortcutMiddleware)
 }
 
-func (m *Module) shortcutMiddleware(next tele.HandlerFunc) tele.HandlerFunc {
-	return func(c tele.Context) error {
+func (m *Module) shortcutMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
+	return func(c *bot.Context) error {
 		text := c.Text()
 		if len(text) > 1 && strings.HasPrefix(text, "#") {
 			name := strings.ToLower(text[1:])
@@ -49,12 +47,12 @@ func (m *Module) shortcutMiddleware(next tele.HandlerFunc) tele.HandlerFunc {
 	}
 }
 
-func (m *Module) handleSave(c tele.Context) error {
+func (m *Module) handleSave(c *bot.Context) error {
 	target, err := m.Bot.GetTargetChat(c)
 	if err != nil {
 		return c.Send("Error resolving chat.")
 	}
-	args := c.Args()
+	args := c.Args
 	if len(args) == 0 {
 		return c.Send("Usage: /save <name> [content]")
 	}
@@ -67,11 +65,11 @@ func (m *Module) handleSave(c tele.Context) error {
 	noteType := "text"
 	fileID := ""
 
-	if c.Message().IsReply() {
-		reply := c.Message().ReplyTo
-		if reply.Photo != nil {
+	if c.Message.ReplyTo != nil {
+		reply := c.Message.ReplyTo
+		if len(reply.Photo) > 0 {
 			noteType = "photo"
-			fileID = reply.Photo.FileID
+			fileID = reply.Photo[0].FileID
 			if content == "" {
 				content = reply.Caption
 			}
@@ -114,6 +112,9 @@ func (m *Module) handleSave(c tele.Context) error {
 		} else {
 			if content == "" {
 				content = reply.Text
+				if content == "" {
+					content = reply.Caption
+				}
 			}
 		}
 	}
@@ -126,15 +127,15 @@ func (m *Module) handleSave(c tele.Context) error {
 	if err != nil {
 		return c.Send("Failed to save note.")
 	}
-	return c.Send(fmt.Sprintf("Note `%s` saved.", name), tele.ModeMarkdown)
+	return c.Send(fmt.Sprintf("Note `%s` saved.", name), "Markdown")
 }
 
-func (m *Module) handleGet(c tele.Context) error {
+func (m *Module) handleGet(c *bot.Context) error {
 	target, err := m.Bot.GetTargetChat(c)
 	if err != nil {
 		return c.Send("Error resolving chat.")
 	}
-	args := c.Args()
+	args := c.Args
 	if len(args) == 0 {
 		return c.Send("Usage: /get <name>")
 	}
@@ -145,13 +146,13 @@ func (m *Module) handleGet(c tele.Context) error {
 		return c.Send("Error fetching note.")
 	}
 	if note == nil {
-		return c.Send(fmt.Sprintf("Note `%s` not found.", name), tele.ModeMarkdown)
+		return c.Send(fmt.Sprintf("Note `%s` not found.", name), "Markdown")
 	}
 
 	return m.sendNoteResponse(c, note)
 }
 
-func (m *Module) sendNoteResponse(c tele.Context, note *store.Note) error {
+func (m *Module) sendNoteResponse(c *bot.Context, note *store.Note) error {
 	target, err := m.Bot.GetTargetChat(c)
 	if err != nil {
 		return c.Send("Error resolving chat.")
@@ -159,39 +160,31 @@ func (m *Module) sendNoteResponse(c tele.Context, note *store.Note) error {
 
 	group, err := m.Store.GetGroup(target.ID)
 	if err != nil || group == nil {
-		return m.deliverNote(c.Bot(), c.Recipient(), note)
+		return m.deliverNote(c.Chat().ID, note)
 	}
 
 	if group.NotesPrivate {
-		markup := &tele.ReplyMarkup{}
-		markup.Inline(markup.Row(markup.Data("Click to get note", "get_note_pm", note.Name)))
-		return c.Send(fmt.Sprintf("Click the button below to view note `%s`.", note.Name), markup, tele.ModeMarkdown)
+		markup := &bot.ReplyMarkup{}
+		btn := bot.InlineKeyboardButton{
+			Text:         "Click to get note",
+			CallbackData: fmt.Sprintf("get_note_pm|%s", note.Name),
+		}
+		markup.InlineKeyboard = [][]bot.InlineKeyboardButton{{btn}}
+		return c.Send(fmt.Sprintf("Click the button below to view note `%s`.", note.Name), markup, "Markdown")
 	}
 
-	return m.deliverNote(c.Bot(), c.Recipient(), note)
+	return m.deliverNote(c.Chat().ID, note)
 }
 
-func (m *Module) onGetNotePM(c tele.Context) error {
-	name := c.Data()
-	// Note: Shortcuts/Buttons usually context-aware, but for PM button, we might need tricky logic.
-	// However, GetNote checks chatID. Here c.Chat() might be private if clicked in PM.
-	// But the button is usually sent TO group or TO PM.
-	// If it's "Click to get note" in group, c.Chat() is group.
-	// If it's in PM, c.Chat() is PM.
-	// The original code uses c.Chat().ID.
-	// If we are in PM and button was sent there, we need to know which group it came from?
-	// The original code: note, err := m.Store.GetNote(c.Chat().ID, name)
-	// If I am in PM, GetNote with PM ID will fail unless the note is IN PM.
-	// Note module as written seems to assume notes are PER CHAT.
-	// So if I use /start connection, retrieve a note, it comes to PM.
-	// If I click a button attached to that note...
-	// Wait, the button "get_note_pm" is added when "NotesPrivate" is true, to move view to PM.
-	// If I am ALREADY in PM (via connection), I don't need "get_note_pm".
-	// But let's leave this one as is for now, or just update to target?
-	// If I am in PM and I click a button, valid context is required.
-	// For now, let's update it to respect connection if possible, but buttons are tricky.
+func (m *Module) onGetNotePM(c *bot.Context) error {
+	data := c.Data()
+	parts := strings.Split(data, "|")
+	if len(parts) < 2 {
+		c.Respond("Invalid data")
+		return nil
+	}
+	name := parts[1]
 
-	// Actually, let's look at shortcutMiddleware.
 	target, err := m.Bot.GetTargetChat(c)
 	if err != nil {
 		return nil
@@ -199,54 +192,63 @@ func (m *Module) onGetNotePM(c tele.Context) error {
 
 	note, err := m.Store.GetNote(target.ID, name)
 	if err != nil || note == nil {
-		return c.Respond(&tele.CallbackResponse{Text: "Note not found."})
+		c.Respond("Note not found.")
+		return nil
 	}
 
-	userChat, err := c.Bot().ChatByID(c.Sender().ID)
+	err = m.deliverNote(c.Sender().ID, note)
 	if err != nil {
-		return c.Respond(&tele.CallbackResponse{Text: "Please start the bot in private first."})
+		c.Respond("Failed to send note. Start me in PM first?")
+		return nil
 	}
-
-	err = m.deliverNote(c.Bot(), userChat, note)
-	if err != nil {
-		return c.Respond(&tele.CallbackResponse{Text: "Failed to send note."})
-	}
-	return c.Respond(&tele.CallbackResponse{Text: "Note sent to your PM."})
+	c.Respond("Note sent to your PM.")
+	return nil
 }
 
-func (m *Module) deliverNote(b tele.API, to tele.Recipient, note *store.Note) error {
-	var what interface{}
-	opts := &tele.SendOptions{}
-	if note.Type == "text" {
-		opts.ParseMode = tele.ModeMarkdown
+func (m *Module) deliverNote(chatID int64, note *store.Note) error {
+	req := map[string]interface{}{
+		"chat_id": chatID,
 	}
 
 	switch note.Type {
 	case "photo":
-		what = &tele.Photo{File: tele.File{FileID: note.FileID}, Caption: note.Content}
+		req["photo"] = note.FileID
+		req["caption"] = note.Content
+		return m.Bot.Raw("sendPhoto", req)
 	case "video":
-		what = &tele.Video{File: tele.File{FileID: note.FileID}, Caption: note.Content}
+		req["video"] = note.FileID
+		req["caption"] = note.Content
+		return m.Bot.Raw("sendVideo", req)
 	case "videonote":
-		what = &tele.VideoNote{File: tele.File{FileID: note.FileID}}
+		req["video_note"] = note.FileID
+		return m.Bot.Raw("sendVideoNote", req)
 	case "document":
-		what = &tele.Document{File: tele.File{FileID: note.FileID}, Caption: note.Content}
+		req["document"] = note.FileID
+		req["caption"] = note.Content
+		return m.Bot.Raw("sendDocument", req)
 	case "sticker":
-		what = &tele.Sticker{File: tele.File{FileID: note.FileID}}
+		req["sticker"] = note.FileID
+		return m.Bot.Raw("sendSticker", req)
 	case "voice":
-		what = &tele.Voice{File: tele.File{FileID: note.FileID}, Caption: note.Content}
+		req["voice"] = note.FileID
+		req["caption"] = note.Content
+		return m.Bot.Raw("sendVoice", req)
 	case "audio":
-		what = &tele.Audio{File: tele.File{FileID: note.FileID}, Caption: note.Content}
+		req["audio"] = note.FileID
+		req["caption"] = note.Content
+		return m.Bot.Raw("sendAudio", req)
 	case "animation":
-		what = &tele.Animation{File: tele.File{FileID: note.FileID}, Caption: note.Content}
+		req["animation"] = note.FileID
+		req["caption"] = note.Content
+		return m.Bot.Raw("sendAnimation", req)
 	default:
-		what = note.Content
+		req["text"] = note.Content
+		req["parse_mode"] = "Markdown"
+		return m.Bot.Raw("sendMessage", req)
 	}
-
-	_, err := b.Send(to, what, opts)
-	return err
 }
 
-func (m *Module) handleClear(c tele.Context) error {
+func (m *Module) handleClear(c *bot.Context) error {
 	target, err := m.Bot.GetTargetChat(c)
 	if err != nil {
 		return c.Send("Error resolving chat.")
@@ -254,7 +256,7 @@ func (m *Module) handleClear(c tele.Context) error {
 	if !m.Bot.IsAdmin(target, c.Sender()) {
 		return nil
 	}
-	args := c.Args()
+	args := c.Args
 	if len(args) == 0 {
 		return c.Send("Usage: /clear <name>")
 	}
@@ -263,10 +265,10 @@ func (m *Module) handleClear(c tele.Context) error {
 	if err != nil {
 		return c.Send("Failed to minimize note.")
 	}
-	return c.Send(fmt.Sprintf("Note `%s` cleared.", name), tele.ModeMarkdown)
+	return c.Send(fmt.Sprintf("Note `%s` cleared.", name), "Markdown")
 }
 
-func (m *Module) handleNotes(c tele.Context) error {
+func (m *Module) handleNotes(c *bot.Context) error {
 	target, err := m.Bot.GetTargetChat(c)
 	if err != nil {
 		return c.Send("Error resolving chat.")
@@ -282,10 +284,10 @@ func (m *Module) handleNotes(c tele.Context) error {
 	for _, n := range notes {
 		msg += fmt.Sprintf("- `%s`\n", n.Name)
 	}
-	return c.Send(msg, tele.ModeMarkdown)
+	return c.Send(msg, "Markdown")
 }
 
-func (m *Module) handleClearAll(c tele.Context) error {
+func (m *Module) handleClearAll(c *bot.Context) error {
 	target, err := m.Bot.GetTargetChat(c)
 	if err != nil {
 		return c.Send("Error resolving chat.")
@@ -300,7 +302,7 @@ func (m *Module) handleClearAll(c tele.Context) error {
 	return c.Send("All notes cleared.")
 }
 
-func (m *Module) handlePrivateNotes(c tele.Context) error {
+func (m *Module) handlePrivateNotes(c *bot.Context) error {
 	target, err := m.Bot.GetTargetChat(c)
 	if err != nil {
 		return c.Send("Error resolving chat.")

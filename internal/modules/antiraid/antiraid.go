@@ -9,8 +9,6 @@ import (
 
 	"lappbot/internal/bot"
 	"lappbot/internal/store"
-
-	tele "gopkg.in/telebot.v4"
 )
 
 type Module struct {
@@ -23,21 +21,24 @@ func New(b *bot.Bot, s *store.Store) *Module {
 }
 
 func (m *Module) Register() {
-	m.Bot.Bot.Handle("/antiraid", m.handleAntiraid)
-	m.Bot.Bot.Handle("/raidtime", m.handleRaidTime)
-	m.Bot.Bot.Handle("/raidactiontime", m.handleRaidActionTime)
-	m.Bot.Bot.Handle("/autoantiraid", m.handleAutoAntiraid)
-	m.Bot.Bot.Handle(tele.OnUserJoined, m.handleUserJoined)
+	m.Bot.Handle("/antiraid", m.handleAntiraid)
+	m.Bot.Handle("/raidtime", m.handleRaidTime)
+	m.Bot.Handle("/raidactiontime", m.handleRaidActionTime)
+	m.Bot.Handle("/autoantiraid", m.handleAutoAntiraid)
+	m.Bot.Handle("new_chat_members", m.handleUserJoined)
 }
 
-func (m *Module) handleUserJoined(c tele.Context) error {
+func (m *Module) handleUserJoined(c *bot.Context) error {
 	group, err := m.Store.GetGroup(c.Chat().ID)
 	if err != nil || group == nil {
 		return nil
 	}
 
 	if group.AntiraidUntil != nil && group.AntiraidUntil.After(time.Now()) {
-		return m.banUser(c, group.RaidActionTime)
+		for _, u := range c.Update.Message.NewChatMembers {
+			m.banUserRaw(c.Chat().ID, u.ID, group.RaidActionTime)
+		}
+		return nil
 	}
 
 	if group.AutoAntiraidThreshold > 0 {
@@ -48,35 +49,37 @@ func (m *Module) handleUserJoined(c tele.Context) error {
 		if val >= int64(group.AutoAntiraidThreshold) {
 			until := time.Now().Add(6 * time.Hour)
 			m.Store.SetAntiraidUntil(c.Chat().ID, &until)
-			c.Send(fmt.Sprintf("🚨 **ANTI-RAID AUTOMATICALLY ENABLED** 🚨\nMore than %d joins in the last minute.\nAnti-raid enabled for 6 hours.", group.AutoAntiraidThreshold), tele.ModeMarkdown)
+			c.Send(fmt.Sprintf("🚨 **ANTI-RAID AUTOMATICALLY ENABLED** 🚨\nMore than %d joins in the last minute.\nAnti-raid enabled for 6 hours.", group.AutoAntiraidThreshold), "Markdown")
 
-			return m.banUser(c, group.RaidActionTime)
+			for _, u := range c.Update.Message.NewChatMembers {
+				m.banUserRaw(c.Chat().ID, u.ID, group.RaidActionTime)
+			}
 		}
 	}
 
 	return nil
 }
 
-func (m *Module) banUser(c tele.Context, durationStr string) error {
+func (m *Module) banUserRaw(chatID, userID int64, durationStr string) error {
 	duration, err := time.ParseDuration(durationStr)
 	if err != nil {
 		duration = 1 * time.Hour
 	}
 
-	until := time.Now().Add(duration)
-	err = c.Bot().Ban(c.Chat(), &tele.ChatMember{User: c.Sender(), RestrictedUntil: until.Unix()})
-	if err == nil {
-		c.Delete()
-	}
-	return err
+	until := time.Now().Add(duration).Unix()
+	return m.Bot.Raw("banChatMember", map[string]interface{}{
+		"chat_id":    chatID,
+		"user_id":    userID,
+		"until_date": until,
+	})
 }
 
-func (m *Module) handleAntiraid(c tele.Context) error {
+func (m *Module) handleAntiraid(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return c.Send("You must be an admin to use this command.")
 	}
 
-	args := c.Args()
+	args := c.Args
 	if len(args) == 0 {
 		return c.Send("Usage: /antiraid <time/off/no>")
 	}
@@ -97,7 +100,7 @@ func (m *Module) handleAntiraid(c tele.Context) error {
 	return c.Send(fmt.Sprintf("Anti-raid enabled until %s.", until.Format(time.RFC822)))
 }
 
-func (m *Module) handleRaidTime(c tele.Context) error {
+func (m *Module) handleRaidTime(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return c.Send("You must be an admin to use this command.")
 	}
@@ -105,12 +108,12 @@ func (m *Module) handleRaidTime(c tele.Context) error {
 	return c.Send("Default raid duration is 6h. Please specify duration using /antiraid <time>.")
 }
 
-func (m *Module) handleRaidActionTime(c tele.Context) error {
+func (m *Module) handleRaidActionTime(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return c.Send("You must be an admin to use this command.")
 	}
 
-	args := c.Args()
+	args := c.Args
 	if len(args) == 0 {
 		group, _ := m.Store.GetGroup(c.Chat().ID)
 		return c.Send(fmt.Sprintf("Current raid action (ban) time: %s", group.RaidActionTime))
@@ -126,12 +129,12 @@ func (m *Module) handleRaidActionTime(c tele.Context) error {
 	return c.Send(fmt.Sprintf("Raid action time set to %s.", duration))
 }
 
-func (m *Module) handleAutoAntiraid(c tele.Context) error {
+func (m *Module) handleAutoAntiraid(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return c.Send("You must be an admin to use this command.")
 	}
 
-	args := c.Args()
+	args := c.Args
 	if len(args) == 0 {
 		return c.Send("Usage: /autoantiraid <number/off/no>")
 	}

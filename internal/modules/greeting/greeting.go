@@ -5,8 +5,6 @@ import (
 	"lappbot/internal/modules/utility"
 	"lappbot/internal/store"
 	"strings"
-
-	tele "gopkg.in/telebot.v4"
 )
 
 type Module struct {
@@ -19,11 +17,14 @@ func New(b *bot.Bot, s *store.Store) *Module {
 }
 
 func (m *Module) Register() {
-	m.Bot.Bot.Handle("/welcome", m.handleWelcomeCommand)
-	m.Bot.Bot.Handle("/goodbye", m.handleGoodbyeCommand)
+	m.Bot.Handle("/welcome", m.handleWelcomeCommand)
+	m.Bot.Handle("/goodbye", m.handleGoodbyeCommand)
+
+	m.Bot.Handle("new_chat_members", m.OnUserJoined)
+	m.Bot.Handle("left_chat_member", m.OnUserLeft)
 }
 
-func (m *Module) OnUserJoined(c tele.Context) error {
+func (m *Module) OnUserJoined(c *bot.Context) error {
 	group, err := m.Store.GetGroup(c.Chat().ID)
 	if err != nil {
 		return err
@@ -41,13 +42,16 @@ func (m *Module) OnUserJoined(c tele.Context) error {
 	}
 
 	if group.GreetingEnabled && group.GreetingMessage != "" {
-		return c.Send(utility.ReplacePlaceholders(group.GreetingMessage, c.Sender()), tele.ModeMarkdown)
+		for _, u := range c.Update.Message.NewChatMembers {
+			userPtr := &u
+			c.Send(utility.ReplacePlaceholders(group.GreetingMessage, userPtr), "Markdown")
+		}
 	}
 
 	return nil
 }
 
-func (m *Module) OnUserLeft(c tele.Context) error {
+func (m *Module) OnUserLeft(c *bot.Context) error {
 	group, err := m.Store.GetGroup(c.Chat().ID)
 	if err != nil {
 		return err
@@ -57,18 +61,20 @@ func (m *Module) OnUserLeft(c tele.Context) error {
 	}
 
 	if group.GoodbyeEnabled && group.GoodbyeMessage != "" {
-		return c.Send(utility.ReplacePlaceholders(group.GoodbyeMessage, c.Sender()), tele.ModeMarkdown)
+		if c.Update.Message.LeftChatMember != nil {
+			c.Send(utility.ReplacePlaceholders(group.GoodbyeMessage, c.Update.Message.LeftChatMember), "Markdown")
+		}
 	}
 
 	return nil
 }
 
-func (m *Module) handleWelcomeCommand(c tele.Context) error {
+func (m *Module) handleWelcomeCommand(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return c.Send("You must be an admin to use this command.")
 	}
 
-	args := c.Args()
+	args := c.Args
 	if len(args) == 0 {
 		return c.Send("Usage: /welcome <on|off|text> [message]")
 	}
@@ -89,8 +95,8 @@ func (m *Module) handleWelcomeCommand(c tele.Context) error {
 	case "text":
 		msg := ""
 		if len(args) < 2 {
-			if c.Message().IsReply() {
-				msg = c.Message().ReplyTo.Text
+			if c.Message.ReplyTo != nil && c.Message.ReplyTo.Text != "" {
+				msg = c.Message.ReplyTo.Text
 			} else {
 				return c.Send("Please provide a welcome message or reply to one.")
 			}
@@ -114,12 +120,12 @@ func (m *Module) handleWelcomeCommand(c tele.Context) error {
 	}
 }
 
-func (m *Module) handleGoodbyeCommand(c tele.Context) error {
+func (m *Module) handleGoodbyeCommand(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return c.Send("You must be an admin to use this command.")
 	}
 
-	args := c.Args()
+	args := c.Args
 	if len(args) == 0 {
 		return c.Send("Usage: /goodbye <on|off|text> [message]")
 	}
@@ -140,8 +146,8 @@ func (m *Module) handleGoodbyeCommand(c tele.Context) error {
 	case "text":
 		msg := ""
 		if len(args) < 2 {
-			if c.Message().IsReply() {
-				msg = c.Message().ReplyTo.Text
+			if c.Message.ReplyTo != nil && c.Message.ReplyTo.Text != "" {
+				msg = c.Message.ReplyTo.Text
 			} else {
 				return c.Send("Please provide a goodbye message or reply to one.")
 			}

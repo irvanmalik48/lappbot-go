@@ -2,39 +2,38 @@ package moderation
 
 import (
 	"fmt"
+	"lappbot/internal/bot"
 	"strconv"
 	"strings"
 	"time"
-
-	tele "gopkg.in/telebot.v4"
 )
 
-func (m *Module) handleWarn(c tele.Context) error {
+func (m *Module) handleWarn(c *bot.Context) error {
 	return m.warnUser(c, false, false)
 }
 
-func (m *Module) handleDWarn(c tele.Context) error {
+func (m *Module) handleDWarn(c *bot.Context) error {
 	return m.warnUser(c, true, false)
 }
 
-func (m *Module) handleSWarn(c tele.Context) error {
+func (m *Module) handleSWarn(c *bot.Context) error {
 	return m.warnUser(c, true, true)
 }
 
-func (m *Module) warnUser(c tele.Context, deleteMessage, silent bool) error {
+func (m *Module) warnUser(c *bot.Context, deleteMessage, silent bool) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
-	if !c.Message().IsReply() {
+	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to warn them.")
 	}
 
-	target := c.Message().ReplyTo.Sender
+	target := c.Message.ReplyTo.From
 	if m.Bot.IsAdmin(c.Chat(), target) {
 		return c.Send("Cannot warn an admin.")
 	}
 
-	reason := c.Args()
+	reason := c.Args
 	reasonStr := "No reason provided"
 	if len(reason) > 0 {
 		reasonStr = strings.Join(reason, " ")
@@ -46,14 +45,17 @@ func (m *Module) warnUser(c tele.Context, deleteMessage, silent bool) error {
 	}
 
 	if deleteMessage {
-		c.Bot().Delete(c.Message().ReplyTo)
+		m.Bot.Raw("deleteMessage", map[string]interface{}{
+			"chat_id":    c.Chat().ID,
+			"message_id": c.Message.ReplyTo.ID,
+		})
 		c.Delete()
 	}
 
 	return m.checkPunish(c, target, reasonStr, silent)
 }
 
-func (m *Module) checkPunish(c tele.Context, target *tele.User, reason string, silent bool) error {
+func (m *Module) checkPunish(c *bot.Context, target *bot.User, reason string, silent bool) error {
 	group, err := m.Store.GetGroup(c.Chat().ID)
 	if err != nil {
 		return err
@@ -92,26 +94,28 @@ func (m *Module) checkPunish(c tele.Context, target *tele.User, reason string, s
 
 		switch actType {
 		case "ban":
-			err = m.Bot.Bot.Ban(c.Chat(), &tele.ChatMember{User: target})
+			err = m.Bot.Raw("banChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": target.ID})
 			msg += "\nAction: Banned."
 		case "kick":
-			err = m.Bot.Bot.Unban(c.Chat(), target)
+			err = m.Bot.Raw("unbanChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": target.ID})
 			msg += "\nAction: Kicked."
 		case "mute":
-			err = m.Bot.Bot.Restrict(c.Chat(), &tele.ChatMember{User: target, Rights: tele.Rights{CanSendMessages: false}, RestrictedUntil: tele.Forever()})
+			permissions := map[string]bool{"can_send_messages": false}
+			err = m.Bot.Raw("restrictChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": target.ID, "permissions": permissions, "until_date": 0})
 			msg += "\nAction: Muted."
 		case "tban":
 			d, _ := time.ParseDuration(duration)
-			until := time.Now().Add(d)
-			err = m.Bot.Bot.Ban(c.Chat(), &tele.ChatMember{User: target, RestrictedUntil: until.Unix()})
+			until := time.Now().Add(d).Unix()
+			err = m.Bot.Raw("banChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": target.ID, "until_date": until})
 			msg += fmt.Sprintf("\nAction: Banned for %s.", duration)
 		case "tmute":
 			d, _ := time.ParseDuration(duration)
-			until := time.Now().Add(d)
-			err = m.Bot.Bot.Restrict(c.Chat(), &tele.ChatMember{User: target, Rights: tele.Rights{CanSendMessages: false}, RestrictedUntil: until.Unix()})
+			until := time.Now().Add(d).Unix()
+			permissions := map[string]bool{"can_send_messages": false}
+			err = m.Bot.Raw("restrictChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": target.ID, "permissions": permissions, "until_date": until})
 			msg += fmt.Sprintf("\nAction: Muted for %s.", duration)
 		default:
-			err = m.Bot.Bot.Unban(c.Chat(), target)
+			err = m.Bot.Raw("unbanChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": target.ID})
 			msg += "\nAction: Kicked (Default)."
 		}
 
@@ -119,23 +123,26 @@ func (m *Module) checkPunish(c tele.Context, target *tele.User, reason string, s
 			msg += "\nFailed to execute punishment."
 		}
 	} else {
-		markup := &tele.ReplyMarkup{}
-		btnRemoveWarn := markup.Data("Remove Warn", "btn_remove_warn", fmt.Sprintf("%d", target.ID))
-		markup.Inline(markup.Row(btnRemoveWarn))
+		markup := &bot.ReplyMarkup{}
+		btn := bot.InlineKeyboardButton{
+			Text:         "Remove Warn",
+			CallbackData: fmt.Sprintf("btn_remove_warn|%d", target.ID),
+		}
+		markup.InlineKeyboard = [][]bot.InlineKeyboardButton{{btn}}
 
 		if !silent {
-			return c.Send(msg, markup, tele.ModeMarkdown)
+			return c.Send(msg, markup, "Markdown")
 		}
 		return nil
 	}
 
 	if !silent {
-		return c.Send(msg, tele.ModeMarkdown)
+		return c.Send(msg, "Markdown")
 	}
 	return nil
 }
 
-func (m *Module) handleRmWarn(c tele.Context) error {
+func (m *Module) handleRmWarn(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
@@ -143,9 +150,9 @@ func (m *Module) handleRmWarn(c tele.Context) error {
 	var targetID int64
 	var targetName string
 
-	if c.Message().IsReply() {
-		targetID = c.Message().ReplyTo.Sender.ID
-		targetName = c.Message().ReplyTo.Sender.FirstName
+	if c.Message.ReplyTo != nil {
+		targetID = c.Message.ReplyTo.From.ID
+		targetName = c.Message.ReplyTo.From.FirstName
 	} else {
 		return c.Send("Reply to a user to remove their last warn.")
 	}
@@ -158,23 +165,23 @@ func (m *Module) handleRmWarn(c tele.Context) error {
 	return c.Send(fmt.Sprintf("Last warn removed for %s.", targetName))
 }
 
-func (m *Module) handleResetWarns(c tele.Context) error {
+func (m *Module) handleResetWarns(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
-	if !c.Message().IsReply() {
+	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to reset their warns.")
 	}
-	target := c.Message().ReplyTo.Sender
+	target := c.Message.ReplyTo.From
 
 	err := m.Store.ResetWarns(target.ID, c.Chat().ID)
 	if err != nil {
 		return c.Send("Error resetting warns.")
 	}
-	return c.Send(fmt.Sprintf("Warns reset for %s.", mention(target)), tele.ModeMarkdown)
+	return c.Send(fmt.Sprintf("Warns reset for %s.", mention(target)), "Markdown")
 }
 
-func (m *Module) handleResetAllWarns(c tele.Context) error {
+func (m *Module) handleResetAllWarns(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
@@ -185,21 +192,21 @@ func (m *Module) handleResetAllWarns(c tele.Context) error {
 	return c.Send("All warnings in this chat have been reset.")
 }
 
-func (m *Module) handleWarnings(c tele.Context) error {
+func (m *Module) handleWarnings(c *bot.Context) error {
 	group, err := m.Store.GetGroup(c.Chat().ID)
 	if err != nil {
 		return err
 	}
 
 	msg := fmt.Sprintf("**Warnings Settings:**\nLimit: %d\nAction: %s\nDuration: %s", group.WarnLimit, group.WarnAction, group.WarnDuration)
-	return c.Send(msg, tele.ModeMarkdown)
+	return c.Send(msg, "Markdown")
 }
 
-func (m *Module) handleWarnMode(c tele.Context) error {
+func (m *Module) handleWarnMode(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
-	args := c.Args()
+	args := c.Args
 	if len(args) == 0 {
 		return m.handleWarnings(c)
 	}
@@ -209,11 +216,11 @@ func (m *Module) handleWarnMode(c tele.Context) error {
 	return c.Send(fmt.Sprintf("Warn action set to: %s", action))
 }
 
-func (m *Module) handleWarnLimit(c tele.Context) error {
+func (m *Module) handleWarnLimit(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
-	args := c.Args()
+	args := c.Args
 	if len(args) == 0 {
 		return c.Send("Usage: /warnlimit <number>")
 	}
@@ -227,11 +234,11 @@ func (m *Module) handleWarnLimit(c tele.Context) error {
 	return c.Send(fmt.Sprintf("Warn limit set to: %d", limit))
 }
 
-func (m *Module) handleWarnTime(c tele.Context) error {
+func (m *Module) handleWarnTime(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
-	args := c.Args()
+	args := c.Args
 	if len(args) == 0 {
 		return c.Send("Usage: /warntime <duration/off>")
 	}
@@ -248,7 +255,7 @@ func (m *Module) handleWarnTime(c tele.Context) error {
 	return c.Send(fmt.Sprintf("Warn duration set to: %s", duration))
 }
 
-func (m *Module) handleMyWarns(c tele.Context) error {
+func (m *Module) handleMyWarns(c *bot.Context) error {
 	group, err := m.Store.GetGroup(c.Chat().ID)
 	if err != nil {
 		return err
@@ -269,19 +276,24 @@ func (m *Module) handleMyWarns(c tele.Context) error {
 	return c.Send(fmt.Sprintf("You have %d/%d warns.", count, group.WarnLimit))
 }
 
-func (m *Module) onRemoveWarnBtn(c tele.Context) error {
+func (m *Module) onRemoveWarnBtn(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
-		return c.Respond(&tele.CallbackResponse{Text: "Admins only."})
+		return c.Respond("Admins only.")
 	}
 
-	targetIDStr := c.Data()
+	parts := strings.Split(c.Data(), "|")
+	if len(parts) < 2 {
+		return c.Respond("Invalid data.")
+	}
+
+	targetIDStr := parts[1]
 	targetID, _ := strconv.ParseInt(targetIDStr, 10, 64)
 
 	err := m.Store.RemoveLastWarn(targetID, c.Chat().ID)
 	if err != nil {
-		return c.Respond(&tele.CallbackResponse{Text: "Error removing warn."})
+		return c.Respond("Error removing warn.")
 	}
 
 	c.Delete()
-	return c.Respond(&tele.CallbackResponse{Text: "Warn removed."})
+	return c.Respond("Warn removed.")
 }

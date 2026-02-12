@@ -2,48 +2,52 @@ package moderation
 
 import (
 	"fmt"
+	"lappbot/internal/bot"
 	"strings"
 	"time"
-
-	tele "gopkg.in/telebot.v4"
 )
 
-func (m *Module) handleMute(c tele.Context) error {
+func (m *Module) handleMute(c *bot.Context) error {
 	return m.muteUser(c, false)
 }
 
-func (m *Module) handleSilentMute(c tele.Context) error {
+func (m *Module) handleSilentMute(c *bot.Context) error {
 	return m.muteUser(c, true)
 }
 
-func (m *Module) muteUser(c tele.Context, silent bool) error {
+func (m *Module) muteUser(c *bot.Context, silent bool) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
-	if !c.Message().IsReply() {
+	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to mute them.")
 	}
-	target := c.Message().ReplyTo.Sender
+	target := c.Message.ReplyTo.From
 	if m.Bot.IsAdmin(c.Chat(), target) {
 		return c.Send("Cannot mute an admin.")
 	}
 
-	reason := c.Args()
+	reason := c.Args
 	reasonStr := "Manual Mute"
 	if len(reason) > 0 {
 		reasonStr = strings.Join(reason, " ")
 	}
 
-	rights := tele.Rights{
-		CanSendMessages: false,
-		CanSendMedia:    false,
-		CanSendPolls:    false,
-		CanSendOther:    false,
-	}
-
 	m.Store.BanUser(target.ID, c.Chat().ID, time.Time{}, reasonStr, c.Sender().ID, "mute")
 
-	err := m.Bot.Bot.Restrict(c.Chat(), &tele.ChatMember{User: target, Rights: rights})
+	permissions := map[string]bool{
+		"can_send_messages":       false,
+		"can_send_media_messages": false,
+		"can_send_polls":          false,
+		"can_send_other_messages": false,
+	}
+
+	err := m.Bot.Raw("restrictChatMember", map[string]interface{}{
+		"chat_id":     c.Chat().ID,
+		"user_id":     target.ID,
+		"permissions": permissions,
+		"until_date":  0,
+	})
 	if err != nil {
 		return c.Send("Error muting user: " + err.Error())
 	}
@@ -52,47 +56,52 @@ func (m *Module) muteUser(c tele.Context, silent bool) error {
 		c.Delete()
 		return nil
 	}
-	return c.Send(fmt.Sprintf("%s muted.\nReason: %s", mention(target), reasonStr), tele.ModeMarkdown)
+	return c.Send(fmt.Sprintf("%s muted.\nReason: %s", mention(target), reasonStr), "Markdown")
 }
 
-func (m *Module) handleUnmute(c tele.Context) error {
+func (m *Module) handleUnmute(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
-	if !c.Message().IsReply() {
+	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to unmute them.")
 	}
-	target := c.Message().ReplyTo.Sender
+	target := c.Message.ReplyTo.From
 
-	rights := tele.Rights{
-		CanSendMessages: true,
-		CanSendMedia:    true,
-		CanSendPolls:    true,
-		CanSendOther:    true,
-		CanAddPreviews:  true,
+	permissions := map[string]bool{
+		"can_send_messages":         true,
+		"can_send_media_messages":   true,
+		"can_send_polls":            true,
+		"can_send_other_messages":   true,
+		"can_add_web_page_previews": true,
+		"can_invite_users":          true,
 	}
 
-	err := m.Bot.Bot.Restrict(c.Chat(), &tele.ChatMember{User: target, Rights: rights})
+	err := m.Bot.Raw("restrictChatMember", map[string]interface{}{
+		"chat_id":     c.Chat().ID,
+		"user_id":     target.ID,
+		"permissions": permissions,
+	})
 	if err != nil {
 		return c.Send("Failed to unmute user: " + err.Error())
 	}
 
-	return c.Send(fmt.Sprintf("%s unmuted.", mention(target)), tele.ModeMarkdown)
+	return c.Send(fmt.Sprintf("%s unmuted.", mention(target)), "Markdown")
 }
 
-func (m *Module) handleTimedMute(c tele.Context) error {
+func (m *Module) handleTimedMute(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 
-	args := c.Args()
+	args := c.Args
 	if len(args) < 1 {
 		return c.Send("Usage: /tmute <duration> [reason] (Reply to user)")
 	}
-	if !c.Message().IsReply() {
+	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to mute them.")
 	}
-	target := c.Message().ReplyTo.Sender
+	target := c.Message.ReplyTo.From
 	if m.Bot.IsAdmin(c.Chat(), target) {
 		return c.Send("Cannot mute an admin.")
 	}
@@ -109,24 +118,29 @@ func (m *Module) handleTimedMute(c tele.Context) error {
 		reasonStr = strings.Join(args[1:], " ")
 	}
 
-	rights := tele.Rights{
-		CanSendMessages: false,
-		CanSendMedia:    false,
-		CanSendPolls:    false,
-		CanSendOther:    false,
-	}
-
 	m.Store.BanUser(target.ID, c.Chat().ID, until, reasonStr, c.Sender().ID, "mute")
 
-	err = m.Bot.Bot.Restrict(c.Chat(), &tele.ChatMember{User: target, Rights: rights, RestrictedUntil: until.Unix()})
+	permissions := map[string]bool{
+		"can_send_messages":       false,
+		"can_send_media_messages": false,
+		"can_send_polls":          false,
+		"can_send_other_messages": false,
+	}
+
+	err = m.Bot.Raw("restrictChatMember", map[string]interface{}{
+		"chat_id":     c.Chat().ID,
+		"user_id":     target.ID,
+		"permissions": permissions,
+		"until_date":  until.Unix(),
+	})
 	if err != nil {
 		return c.Send("Error muting user: " + err.Error())
 	}
 
-	return c.Send(fmt.Sprintf("%s muted for %s.\nReason: %s", mention(target), durationStr, reasonStr), tele.ModeMarkdown)
+	return c.Send(fmt.Sprintf("%s muted for %s.\nReason: %s", mention(target), durationStr, reasonStr), "Markdown")
 }
 
-func (m *Module) handleRealmMute(c tele.Context) error {
+func (m *Module) handleRealmMute(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
@@ -135,16 +149,16 @@ func (m *Module) handleRealmMute(c tele.Context) error {
 		return c.Send("This command is restricted to the bot owner.")
 	}
 
-	if !c.Message().IsReply() {
+	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to realm mute them.")
 	}
-	target := c.Message().ReplyTo.Sender
+	target := c.Message.ReplyTo.From
 
 	if m.Bot.IsAdmin(c.Chat(), target) {
 		return c.Send("Cannot realm mute an admin of this group.")
 	}
 
-	reason := c.Args()
+	reason := c.Args
 	reasonStr := "Realm Mute"
 	if len(reason) > 0 {
 		reasonStr = strings.Join(reason, " ")
@@ -158,19 +172,22 @@ func (m *Module) handleRealmMute(c tele.Context) error {
 	successCount := 0
 	failCount := 0
 
-	rights := tele.Rights{
-		CanSendMessages: false,
-		CanSendMedia:    false,
-		CanSendPolls:    false,
-		CanSendOther:    false,
+	permissions := map[string]bool{
+		"can_send_messages":       false,
+		"can_send_media_messages": false,
+		"can_send_polls":          false,
+		"can_send_other_messages": false,
 	}
 
 	for _, g := range groups {
-		chat := &tele.Chat{ID: g.TelegramID}
-
 		m.Store.BanUser(target.ID, g.TelegramID, time.Time{}, reasonStr, c.Sender().ID, "mute")
 
-		err := m.Bot.Bot.Restrict(chat, &tele.ChatMember{User: target, Rights: rights})
+		err := m.Bot.Raw("restrictChatMember", map[string]interface{}{
+			"chat_id":     g.TelegramID,
+			"user_id":     target.ID,
+			"permissions": permissions,
+			"until_date":  0,
+		})
 		if err == nil {
 			successCount++
 		} else {
@@ -179,5 +196,5 @@ func (m *Module) handleRealmMute(c tele.Context) error {
 	}
 
 	return c.Send(fmt.Sprintf("Realm Mute Executed.\nTarget: %s\nMuted in: %d groups\nFailed in: %d groups\nReason: %s",
-		mention(target), successCount, failCount, reasonStr), tele.ModeMarkdown)
+		mention(target), successCount, failCount, reasonStr), "Markdown")
 }

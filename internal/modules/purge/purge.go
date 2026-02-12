@@ -10,7 +10,6 @@ import (
 	"lappbot/internal/store"
 
 	"github.com/valkey-io/valkey-go"
-	tele "gopkg.in/telebot.v4"
 )
 
 type Module struct {
@@ -23,108 +22,94 @@ func New(b *bot.Bot, s *store.Store) *Module {
 }
 
 func (m *Module) Register() {
-	m.Bot.Bot.Handle("/purge", m.handlePurge)
-	m.Bot.Bot.Handle("/spurge", m.handleSPurge)
-	m.Bot.Bot.Handle("/del", m.handleDel)
-	m.Bot.Bot.Handle("/purgefrom", m.handlePurgeFrom)
-	m.Bot.Bot.Handle("/purgeto", m.handlePurgeTo)
+	m.Bot.Handle("/purge", m.handlePurge)
+	m.Bot.Handle("/spurge", m.handlePurge)
+	m.Bot.Handle("/del", m.handleDel)
+	m.Bot.Handle("/purgefrom", m.handlePurgeFrom)
+	m.Bot.Handle("/purgeto", m.handlePurgeTo)
 }
 
-func (m *Module) handlePurge(c tele.Context) error {
-	if !c.Message().IsReply() {
+func (m *Module) deleteMessages(chatID int64, messageIDs []int) {
+	if len(messageIDs) == 0 {
+		return
+	}
+
+	batchSize := 100
+	for i := 0; i < len(messageIDs); i += batchSize {
+		end := i + batchSize
+		if end > len(messageIDs) {
+			end = len(messageIDs)
+		}
+		batch := messageIDs[i:end]
+
+		req := map[string]interface{}{
+			"chat_id":     chatID,
+			"message_ids": batch,
+		}
+		m.Bot.Raw("deleteMessages", req)
+	}
+}
+
+func (m *Module) handlePurge(c *bot.Context) error {
+	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a message to purge from.")
 	}
-	args := c.Args()
+	args := c.Args
 	limit := 0
 	if len(args) > 0 {
 		if l, err := strconv.Atoi(args[0]); err == nil {
 			limit = l
 		}
 	}
-	startID := c.Message().ReplyTo.ID
-	endID := c.Message().ID
-	var toDelete []tele.Editable
+
+	startID := int(c.Message.ReplyTo.ID)
+	endID := int(c.Message.ID)
+
+	var toDelete []int
 	if limit > 0 {
 		for i := 1; i <= limit; i++ {
-			toDelete = append(toDelete, &tele.Message{ID: startID + i, Chat: c.Chat()})
+			toDelete = append(toDelete, startID+i)
 		}
 	} else {
 		for i := startID; i < endID; i++ {
-			toDelete = append(toDelete, &tele.Message{ID: i, Chat: c.Chat()})
+			toDelete = append(toDelete, i)
 		}
 	}
-	toDelete = append(toDelete, &tele.Message{ID: endID, Chat: c.Chat()})
-	c.Bot().DeleteMany(toDelete)
+	toDelete = append(toDelete, endID)
 
-	msg, err := c.Bot().Send(c.Chat(), "Purge complete.")
-	if err == nil {
-		go func() {
-			time.Sleep(3 * time.Second)
-			c.Bot().Delete(msg)
-		}()
+	m.deleteMessages(c.Chat().ID, toDelete)
+
+	if c.Message.Text != "" && (c.Message.Text == "/spurge" || len(c.Message.Text) > 7 && c.Message.Text[:7] == "/spurge") {
+		return nil
 	}
+
+	c.Send("Purge complete.")
 	return nil
 }
 
-func (m *Module) handleSPurge(c tele.Context) error {
-	if !c.Message().IsReply() {
+func (m *Module) handleDel(c *bot.Context) error {
+	if c.Message.ReplyTo == nil {
 		return nil
 	}
-	args := c.Args()
-	limit := 0
-	if len(args) > 0 {
-		if l, err := strconv.Atoi(args[0]); err == nil {
-			limit = l
-		}
-	}
-	startID := c.Message().ReplyTo.ID
-	endID := c.Message().ID
-	var toDelete []tele.Editable
-	if limit > 0 {
-		for i := 1; i <= limit; i++ {
-			toDelete = append(toDelete, &tele.Message{ID: startID + i, Chat: c.Chat()})
-		}
-	} else {
-		for i := startID; i < endID; i++ {
-			toDelete = append(toDelete, &tele.Message{ID: i, Chat: c.Chat()})
-		}
-	}
-	toDelete = append(toDelete, &tele.Message{ID: endID, Chat: c.Chat()})
-	c.Bot().DeleteMany(toDelete)
-	return nil
-}
-
-func (m *Module) handleDel(c tele.Context) error {
-	if !c.Message().IsReply() {
-		return nil
-	}
-	c.Bot().Delete(c.Message().ReplyTo)
+	m.deleteMessages(c.Chat().ID, []int{int(c.Message.ReplyTo.ID)})
 	c.Delete()
 	return nil
 }
 
-func (m *Module) handlePurgeFrom(c tele.Context) error {
-	if !c.Message().IsReply() {
+func (m *Module) handlePurgeFrom(c *bot.Context) error {
+	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a message to mark as purge start.")
 	}
 	key := fmt.Sprintf("purgefrom:%d", c.Chat().ID)
-	err := m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Set().Key(key).Value(strconv.Itoa(c.Message().ReplyTo.ID)).Ex(time.Minute*5).Build()).Error()
-	if err != nil {
-		return c.Send("Failed to set purge start point.")
-	}
+	m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Set().Key(key).Value(strconv.Itoa(int(c.Message.ReplyTo.ID))).Ex(time.Minute*5).Build())
+
 	c.Delete()
-	msg, err := c.Bot().Send(c.Chat(), "Purge start marked. Reply to another message with /purgeto to purge range.")
-	if err == nil {
-		go func() {
-			time.Sleep(5 * time.Second)
-			c.Bot().Delete(msg)
-		}()
-	}
+	c.Send("Purge start marked. Reply to another message with /purgeto to purge range.")
 	return nil
 }
 
-func (m *Module) handlePurgeTo(c tele.Context) error {
-	if !c.Message().IsReply() {
+func (m *Module) handlePurgeTo(c *bot.Context) error {
+	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a message to mark as purge end.")
 	}
 	key := fmt.Sprintf("purgefrom:%d", c.Chat().ID)
@@ -136,24 +121,20 @@ func (m *Module) handlePurgeTo(c tele.Context) error {
 		return c.Send("Failed to get purge start point.")
 	}
 	startID, _ := strconv.Atoi(res)
-	endID := c.Message().ReplyTo.ID
+	endID := int(c.Message.ReplyTo.ID)
 	if startID > endID {
 		startID, endID = endID, startID
 	}
-	var toDelete []tele.Editable
+
+	var toDelete []int
 	for i := startID; i <= endID; i++ {
-		toDelete = append(toDelete, &tele.Message{ID: i, Chat: c.Chat()})
+		toDelete = append(toDelete, i)
 	}
-	toDelete = append(toDelete, &tele.Message{ID: c.Message().ID, Chat: c.Chat()})
-	c.Bot().DeleteMany(toDelete)
+	toDelete = append(toDelete, int(c.Message.ID))
+
+	m.deleteMessages(c.Chat().ID, toDelete)
 
 	m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Del().Key(key).Build())
-	msg, err := c.Bot().Send(c.Chat(), "Range purge complete.")
-	if err == nil {
-		go func() {
-			time.Sleep(3 * time.Second)
-			c.Bot().Delete(msg)
-		}()
-	}
+	c.Send("Range purge complete.")
 	return nil
 }

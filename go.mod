@@ -9,8 +9,6 @@ require (
 	github.com/valkey-io/valkey-go v1.0.71
 )
 
-require gopkg.in/telebot.v4 v4.0.0-beta.7
-
 require github.com/matoous/go-nanoid/v2 v2.1.0 // direct
 
 require (

@@ -7,17 +7,16 @@ import (
 	"strings"
 	"time"
 
+	"lappbot/internal/bot"
 	"lappbot/internal/store"
-
-	tele "gopkg.in/telebot.v4"
 )
 
-func (m *Module) handleBlacklistAdd(c tele.Context) error {
+func (m *Module) handleBlacklistAdd(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 
-	args := c.Args()
+	args := c.Args
 	if len(args) < 2 {
 		return c.Send("Usage: /bl <type> <value> [action] [duration]\nTypes: regex, sticker_set, emoji\nActions: delete, soft_warn, hard_warn, kick, mute, ban")
 	}
@@ -55,12 +54,12 @@ func (m *Module) handleBlacklistAdd(c tele.Context) error {
 	return c.Send(fmt.Sprintf("Blacklisted %s: %s (Action: %s)", kind, value, action))
 }
 
-func (m *Module) handleBlacklistRemove(c tele.Context) error {
+func (m *Module) handleBlacklistRemove(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return nil
 	}
 
-	args := c.Args()
+	args := c.Args
 	if len(args) < 2 {
 		return c.Send("Usage: /unbl <type> <value>")
 	}
@@ -82,7 +81,7 @@ func (m *Module) handleBlacklistRemove(c tele.Context) error {
 	return c.Send(fmt.Sprintf("Removed %s from blacklist: %s", kind, value))
 }
 
-func (m *Module) handleBlacklistList(c tele.Context) error {
+func (m *Module) handleBlacklistList(c *bot.Context) error {
 	items, err := m.Store.GetBlacklist(c.Chat().ID)
 	if err != nil {
 		return c.Send("Failed to fetch blacklist: " + err.Error())
@@ -97,7 +96,7 @@ func (m *Module) handleBlacklistList(c tele.Context) error {
 		msg += fmt.Sprintf("• [%s] %s (Action: %s)\n", html.EscapeString(item.Type), html.EscapeString(item.Value), html.EscapeString(item.Action))
 	}
 
-	return c.Send(msg, tele.ModeHTML)
+	return c.Send(msg, "HTML")
 }
 
 func (m *Module) LoadBlacklistCache(groupID int64) error {
@@ -152,8 +151,8 @@ func (m *Module) LoadApprovedUsers(groupID int64) error {
 	return nil
 }
 
-func (m *Module) CheckBlacklist(next tele.HandlerFunc) tele.HandlerFunc {
-	return func(c tele.Context) error {
+func (m *Module) CheckBlacklist(next bot.HandlerFunc) bot.HandlerFunc {
+	return func(c *bot.Context) error {
 		if m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 			return next(c)
 		}
@@ -197,8 +196,11 @@ func (m *Module) CheckBlacklist(next tele.HandlerFunc) tele.HandlerFunc {
 		emojis := m.BlacklistCache.Emojis[c.Chat().ID]
 		m.BlacklistCache.RUnlock()
 
+		text := c.Message.Text
+		caption := c.Message.Caption
+
 		for _, re := range regexes {
-			if re.MatchString(c.Text()) || (c.Message().Caption != "" && re.MatchString(c.Message().Caption)) {
+			if re.MatchString(text) || (caption != "" && re.MatchString(caption)) {
 				items, _ := m.Store.GetBlacklist(c.Chat().ID)
 				for _, item := range items {
 					if item.Type == "regex" && item.Value == re.String() {
@@ -208,15 +210,15 @@ func (m *Module) CheckBlacklist(next tele.HandlerFunc) tele.HandlerFunc {
 			}
 		}
 
-		if c.Message().Sticker != nil {
-			if item, exists := stickers[c.Message().Sticker.SetName]; exists {
+		if c.Message.Sticker != nil {
+			if item, exists := stickers[c.Message.Sticker.SetName]; exists {
 				return m.executeBlacklistAction(c, item)
 			}
 		}
 
-		if c.Message().Entities != nil {
-			for _, entity := range c.Message().Entities {
-				if entity.Type == tele.EntityCustomEmoji {
+		if c.Message.Entities != nil {
+			for _, entity := range c.Message.Entities {
+				if entity.Type == "custom_emoji" {
 					if item, exists := emojis[entity.CustomEmojiID]; exists {
 						return m.executeBlacklistAction(c, item)
 					}
@@ -228,35 +230,35 @@ func (m *Module) CheckBlacklist(next tele.HandlerFunc) tele.HandlerFunc {
 	}
 }
 
-func (m *Module) executeBlacklistAction(c tele.Context, item store.BlacklistItem) error {
+func (m *Module) executeBlacklistAction(c *bot.Context, item store.BlacklistItem) error {
 	c.Delete()
 
 	switch item.Action {
 	case "delete":
 		return nil
 	case "soft_warn":
-		tempMsg, _ := c.Bot().Send(c.Chat(), fmt.Sprintf("%s, that is not allowed here.", mention(c.Sender())))
-		go func() {
-			time.Sleep(5 * time.Second)
-			c.Bot().Delete(tempMsg)
-		}()
+		m.Bot.Raw("sendMessage", map[string]interface{}{
+			"chat_id":    c.Chat().ID,
+			"text":       fmt.Sprintf("%s, that is not allowed here.", mention(c.Sender())),
+			"parse_mode": "Markdown",
+		})
 		return nil
 	case "hard_warn":
-		count, err := m.Store.AddWarn(c.Sender().ID, c.Chat().ID, "Blacklist violation: "+item.Type, m.Bot.Bot.Me.ID)
+		count, err := m.Store.AddWarn(c.Sender().ID, c.Chat().ID, "Blacklist violation: "+item.Type, m.Bot.Client.Timeout.Microseconds())
 		if err != nil {
 			return nil
 		}
 		msg := fmt.Sprintf("%s has been warned (Blacklist).\nTotal Warns: %d/3", mention(c.Sender()), count)
 		if count >= 3 {
-			m.Bot.Bot.Ban(c.Chat(), &tele.ChatMember{User: c.Sender()})
-			m.Bot.Bot.Unban(c.Chat(), c.Sender())
+			m.Bot.Raw("banChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": c.Sender().ID})
+			m.Bot.Raw("unbanChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": c.Sender().ID, "only_if_banned": true})
 			m.Store.ResetWarns(c.Sender().ID, c.Chat().ID)
 			msg += "\nUser kicked (limit reached)."
 		}
 		c.Send(msg)
 		return nil
 	case "kick":
-		m.Bot.Bot.Unban(c.Chat(), c.Sender())
+		m.Bot.Raw("unbanChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": c.Sender().ID})
 		c.Send(fmt.Sprintf("%s kicked for blacklist violation.", mention(c.Sender())))
 		return nil
 	case "mute":
@@ -267,18 +269,23 @@ func (m *Module) executeBlacklistAction(c tele.Context, item store.BlacklistItem
 				duration = d
 			}
 		}
-		until := time.Now().Add(duration)
-		rights := tele.Rights{
-			CanSendMessages: false,
-			CanSendMedia:    false,
-			CanSendPolls:    false,
-			CanSendOther:    false,
+		until := time.Now().Add(duration).Unix()
+		permissions := map[string]bool{
+			"can_send_messages":       false,
+			"can_send_media_messages": false,
+			"can_send_polls":          false,
+			"can_send_other_messages": false,
 		}
-		m.Bot.Bot.Restrict(c.Chat(), &tele.ChatMember{User: c.Sender(), Rights: rights, RestrictedUntil: until.Unix()})
+		m.Bot.Raw("restrictChatMember", map[string]interface{}{
+			"chat_id":     c.Chat().ID,
+			"user_id":     c.Sender().ID,
+			"permissions": permissions,
+			"until_date":  until,
+		})
 		c.Send(fmt.Sprintf("%s muted for %v (Blacklist violation).", mention(c.Sender()), duration))
 		return nil
 	case "ban":
-		m.Bot.Bot.Ban(c.Chat(), &tele.ChatMember{User: c.Sender()})
+		m.Bot.Raw("banChatMember", map[string]interface{}{"chat_id": c.Chat().ID, "user_id": c.Sender().ID})
 		c.Send(fmt.Sprintf("%s banned for blacklist violation.", mention(c.Sender())))
 		return nil
 	}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -32,14 +33,14 @@ func (s *Store) SaveNote(chatID int64, name, content, noteType, fileID string, c
           ON CONFLICT (chat_id, name) DO UPDATE SET content = $4, type = $5, file_id = $6, created_by = $7`
 	_, err = s.db.Exec(context.Background(), q, id, chatID, name, content, noteType, fileID, createdBy)
 	if err == nil {
-		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("notes:%d", chatID)).Build())
-		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("note:%d:%s", chatID, name)).Build())
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key("notes:"+strconv.FormatInt(chatID, 10)).Build())
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key("note:"+strconv.FormatInt(chatID, 10)+":"+name).Build())
 	}
 	return err
 }
 
 func (s *Store) GetNote(chatID int64, name string) (*Note, error) {
-	cacheKey := fmt.Sprintf("note:%d:%s", chatID, name)
+	cacheKey := "note:" + strconv.FormatInt(chatID, 10) + ":" + name
 	val, err := s.Valkey.Do(context.Background(), s.Valkey.B().Get().Key(cacheKey).Build()).AsBytes()
 	if err == nil {
 		var n Note
@@ -70,8 +71,8 @@ func (s *Store) DeleteNote(chatID int64, name string) error {
 	q := `DELETE FROM notes WHERE chat_id = $1 AND name = $2`
 	_, err := s.db.Exec(context.Background(), q, chatID, name)
 	if err == nil {
-		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("notes:%d", chatID)).Build())
-		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("note:%d:%s", chatID, name)).Build())
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key("notes:"+strconv.FormatInt(chatID, 10)).Build())
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key("note:"+strconv.FormatInt(chatID, 10)+":"+name).Build())
 	}
 	return err
 }
@@ -86,7 +87,7 @@ func (s *Store) ClearAllNotes(chatID int64) error {
 }
 
 func (s *Store) GetNotes(chatID int64) ([]Note, error) {
-	cacheKey := fmt.Sprintf("notes:%d", chatID)
+	cacheKey := "notes:" + strconv.FormatInt(chatID, 10)
 	val, err := s.Valkey.Do(context.Background(), s.Valkey.B().Get().Key(cacheKey).Build()).AsBytes()
 	if err == nil {
 		var notes []Note
@@ -102,7 +103,7 @@ func (s *Store) GetNotes(chatID int64) ([]Note, error) {
 	}
 	defer rows.Close()
 
-	var notes []Note
+	notes := make([]Note, 0)
 	for rows.Next() {
 		var n Note
 		if err := rows.Scan(&n.Name, &n.Type); err == nil {

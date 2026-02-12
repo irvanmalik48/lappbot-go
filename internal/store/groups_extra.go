@@ -12,7 +12,7 @@ func (s *Store) GetAllGroups() ([]Group, error) {
 	}
 	defer rows.Close()
 
-	var groups []Group
+	groups := make([]Group, 0)
 	for rows.Next() {
 		var g Group
 		if err := rows.Scan(&g.ID, &g.TelegramID, &g.Title); err != nil {

@@ -10,7 +10,7 @@ import (
 	"lappbot/internal/bot"
 	"lappbot/internal/store"
 
-	tele "gopkg.in/telebot.v4"
+	"github.com/valkey-io/valkey-go"
 )
 
 type Module struct {
@@ -23,17 +23,17 @@ func New(b *bot.Bot, s *store.Store) *Module {
 }
 
 func (m *Module) Register() {
-	m.Bot.Bot.Use(m.CheckFlood)
-	m.Bot.Bot.Handle("/flood", m.handleFlood)
-	m.Bot.Bot.Handle("/setflood", m.handleSetFlood)
-	m.Bot.Bot.Handle("/setfloodtimer", m.handleSetFloodTimer)
-	m.Bot.Bot.Handle("/floodmode", m.handleFloodMode)
-	m.Bot.Bot.Handle("/clearflood", m.handleClearFlood)
+	m.Bot.Use(m.CheckFlood)
+	m.Bot.Handle("/flood", m.handleFlood)
+	m.Bot.Handle("/setflood", m.handleSetFlood)
+	m.Bot.Handle("/setfloodtimer", m.handleSetFloodTimer)
+	m.Bot.Handle("/floodmode", m.handleFloodMode)
+	m.Bot.Handle("/clearflood", m.handleClearFlood)
 }
 
-func (m *Module) CheckFlood(next tele.HandlerFunc) tele.HandlerFunc {
-	return func(c tele.Context) error {
-		if c.Chat().Type == tele.ChatPrivate {
+func (m *Module) CheckFlood(next bot.HandlerFunc) bot.HandlerFunc {
+	return func(c *bot.Context) error {
+		if c.Chat().Type == "private" {
 			return next(c)
 		}
 		if m.Bot.IsAdmin(c.Chat(), c.Sender()) {
@@ -46,9 +46,14 @@ func (m *Module) CheckFlood(next tele.HandlerFunc) tele.HandlerFunc {
 		}
 
 		if group.AntifloodConsecutiveLimit > 0 {
-			key := fmt.Sprintf("flood:consecutive:%d:%d", c.Chat().ID, c.Sender().ID)
-			val, _ := m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Incr().Key(key).Build()).AsInt64()
-			m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Expire().Key(key).Seconds(5).Build())
+			key := "flood:consecutive:" + strconv.FormatInt(c.Chat().ID, 10) + ":" + strconv.FormatInt(c.Sender().ID, 10)
+
+			cmds := make(valkey.Commands, 0, 2)
+			cmds = append(cmds, m.Store.Valkey.B().Incr().Key(key).Build())
+			cmds = append(cmds, m.Store.Valkey.B().Expire().Key(key).Seconds(5).Build())
+
+			resps := m.Store.Valkey.DoMulti(context.Background(), cmds...)
+			val, _ := resps[0].AsInt64()
 
 			if val >= int64(group.AntifloodConsecutiveLimit) {
 				m.takeAction(c, group)
@@ -60,12 +65,19 @@ func (m *Module) CheckFlood(next tele.HandlerFunc) tele.HandlerFunc {
 		if group.AntifloodTimerLimit > 0 && group.AntifloodTimerDuration != "" {
 			duration, _ := time.ParseDuration(group.AntifloodTimerDuration)
 			if duration > 0 {
-				key := fmt.Sprintf("flood:timer:%d:%d", c.Chat().ID, c.Sender().ID)
+				key := "flood:timer:" + strconv.FormatInt(c.Chat().ID, 10) + ":" + strconv.FormatInt(c.Sender().ID, 10)
 
-				val, _ := m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Incr().Key(key).Build()).AsInt64()
+				script := `
+			local val = redis.call("INCR", KEYS[1])
+			if val == 1 then
+				redis.call("EXPIRE", KEYS[1], ARGV[1])
+			end
+			return val
+			`
 
-				if val == 1 {
-					m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Expire().Key(key).Seconds(int64(duration.Seconds())).Build())
+				val, err := m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Eval().Script(script).Numkeys(1).Key(key).Arg(strconv.FormatInt(int64(duration.Seconds()), 10)).Build()).AsInt64()
+				if err != nil {
+					val = 0
 				}
 
 				if val >= int64(group.AntifloodTimerLimit) {
@@ -80,7 +92,7 @@ func (m *Module) CheckFlood(next tele.HandlerFunc) tele.HandlerFunc {
 	}
 }
 
-func (m *Module) takeAction(c tele.Context, group *store.Group) {
+func (m *Module) takeAction(c *bot.Context, group *store.Group) {
 	parts := strings.Split(group.AntifloodAction, " ")
 	action := parts[0]
 	duration := "1h"
@@ -90,24 +102,53 @@ func (m *Module) takeAction(c tele.Context, group *store.Group) {
 
 	var err error
 	var until time.Time
+	var permissions map[string]bool
 
 	switch action {
 	case "ban":
-		err = c.Bot().Ban(c.Chat(), &tele.ChatMember{User: c.Sender()})
+		err = c.Bot.Raw("banChatMember", map[string]interface{}{
+			"chat_id": c.Chat().ID,
+			"user_id": c.Sender().ID,
+		})
 	case "kick":
-		err = c.Bot().Unban(c.Chat(), c.Sender())
+		err = c.Bot.Raw("unbanChatMember", map[string]interface{}{
+			"chat_id": c.Chat().ID,
+			"user_id": c.Sender().ID,
+		})
 	case "mute":
-		err = c.Bot().Restrict(c.Chat(), &tele.ChatMember{User: c.Sender(), Rights: tele.Rights{CanSendMessages: false}, RestrictedUntil: tele.Forever()})
+		permissions = map[string]bool{"can_send_messages": false}
+		err = c.Bot.Raw("restrictChatMember", map[string]interface{}{
+			"chat_id":     c.Chat().ID,
+			"user_id":     c.Sender().ID,
+			"permissions": permissions,
+			"until_date":  0,
+		})
 	case "tban":
 		d, _ := time.ParseDuration(duration)
 		until = time.Now().Add(d)
-		err = c.Bot().Ban(c.Chat(), &tele.ChatMember{User: c.Sender(), RestrictedUntil: until.Unix()})
+		err = c.Bot.Raw("banChatMember", map[string]interface{}{
+			"chat_id":    c.Chat().ID,
+			"user_id":    c.Sender().ID,
+			"until_date": until.Unix(),
+		})
 	case "tmute":
 		d, _ := time.ParseDuration(duration)
 		until = time.Now().Add(d)
-		err = c.Bot().Restrict(c.Chat(), &tele.ChatMember{User: c.Sender(), Rights: tele.Rights{CanSendMessages: false}, RestrictedUntil: until.Unix()})
+		permissions = map[string]bool{"can_send_messages": false}
+		err = c.Bot.Raw("restrictChatMember", map[string]interface{}{
+			"chat_id":     c.Chat().ID,
+			"user_id":     c.Sender().ID,
+			"permissions": permissions,
+			"until_date":  until.Unix(),
+		})
 	default:
-		err = c.Bot().Restrict(c.Chat(), &tele.ChatMember{User: c.Sender(), Rights: tele.Rights{CanSendMessages: false}, RestrictedUntil: tele.Forever()})
+		permissions = map[string]bool{"can_send_messages": false}
+		err = c.Bot.Raw("restrictChatMember", map[string]interface{}{
+			"chat_id":     c.Chat().ID,
+			"user_id":     c.Sender().ID,
+			"permissions": permissions,
+			"until_date":  0,
+		})
 	}
 
 	if err != nil {
@@ -122,7 +163,7 @@ func (m *Module) takeAction(c tele.Context, group *store.Group) {
 	}
 }
 
-func (m *Module) handleFlood(c tele.Context) error {
+func (m *Module) handleFlood(c *bot.Context) error {
 	group, err := m.Store.GetGroup(c.Chat().ID)
 	if err != nil {
 		return err
@@ -138,14 +179,14 @@ func (m *Module) handleFlood(c tele.Context) error {
 		group.AntifloodAction,
 		group.AntifloodDelete)
 
-	return c.Send(info, tele.ModeMarkdown)
+	return c.Send(info, "Markdown")
 }
 
-func (m *Module) handleSetFlood(c tele.Context) error {
+func (m *Module) handleSetFlood(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return c.Send("Admin only.")
 	}
-	args := c.Args()
+	args := c.Args
 	if len(args) == 0 {
 		return c.Send("Usage: /setflood <number/off>")
 	}
@@ -164,11 +205,11 @@ func (m *Module) handleSetFlood(c tele.Context) error {
 	return c.Send(fmt.Sprintf("Antiflood consecutive limit set to %v.", arg))
 }
 
-func (m *Module) handleSetFloodTimer(c tele.Context) error {
+func (m *Module) handleSetFloodTimer(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return c.Send("Admin only.")
 	}
-	args := c.Args()
+	args := c.Args
 	if len(args) == 0 {
 		return c.Send("Usage: /setfloodtimer <count> <duration> OR /setfloodtimer off")
 	}
@@ -196,11 +237,11 @@ func (m *Module) handleSetFloodTimer(c tele.Context) error {
 	return c.Send(fmt.Sprintf("Timed antiflood set: %d messages in %s.", count, args[1]))
 }
 
-func (m *Module) handleFloodMode(c tele.Context) error {
+func (m *Module) handleFloodMode(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return c.Send("Admin only.")
 	}
-	args := c.Args()
+	args := c.Args
 	if len(args) == 0 {
 		return c.Send("Usage: /floodmode <action> [duration]")
 	}
@@ -210,11 +251,11 @@ func (m *Module) handleFloodMode(c tele.Context) error {
 	return c.Send(fmt.Sprintf("Antiflood action set to: %s", action))
 }
 
-func (m *Module) handleClearFlood(c tele.Context) error {
+func (m *Module) handleClearFlood(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return c.Send("Admin only.")
 	}
-	args := c.Args()
+	args := c.Args
 	if len(args) == 0 {
 		return c.Send("Usage: /clearflood <yes/no>")
 	}

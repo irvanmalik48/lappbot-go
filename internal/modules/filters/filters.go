@@ -7,8 +7,6 @@ import (
 
 	"lappbot/internal/bot"
 	"lappbot/internal/store"
-
-	tele "gopkg.in/telebot.v4"
 )
 
 type FiltersModule struct {
@@ -16,19 +14,19 @@ type FiltersModule struct {
 	Store *store.Store
 }
 
-func NewFilters(b *bot.Bot, s *store.Store) *FiltersModule {
+func New(b *bot.Bot, s *store.Store) *FiltersModule {
 	return &FiltersModule{Bot: b, Store: s}
 }
 
 func (m *FiltersModule) Register() {
-	m.Bot.Bot.Handle("/filter", m.handleFilter)
-	m.Bot.Bot.Handle("/stop", m.handleStop)
-	m.Bot.Bot.Handle("/filters", m.handleFilters)
+	m.Bot.Handle("/filter", m.handleFilter)
+	m.Bot.Handle("/stop", m.handleStop)
+	m.Bot.Handle("/filters", m.handleFilters)
 
-	m.Bot.Bot.Handle(tele.OnText, m.handleText)
+	m.Bot.Handle("on_text", m.handleText)
 }
 
-func (m *FiltersModule) handleFilter(c tele.Context) error {
+func (m *FiltersModule) handleFilter(c *bot.Context) error {
 	target, err := m.Bot.GetTargetChat(c)
 	if err != nil {
 		return c.Send("Error resolving chat.")
@@ -36,7 +34,7 @@ func (m *FiltersModule) handleFilter(c tele.Context) error {
 	if !m.Bot.IsAdmin(target, c.Sender()) {
 		return c.Send("You must be an admin to use this command.")
 	}
-	args := c.Args()
+	args := c.Args
 	if len(args) < 1 {
 		return c.Send("Usage: /filter <trigger> <response> (or reply to a message)")
 	}
@@ -44,10 +42,10 @@ func (m *FiltersModule) handleFilter(c tele.Context) error {
 	trigger := strings.ToLower(args[0])
 	var response string
 
-	if c.Message().IsReply() {
-		response = c.Message().ReplyTo.Text
+	if c.Message.ReplyTo != nil {
+		response = c.Message.ReplyTo.Text
 		if response == "" {
-			response = c.Message().ReplyTo.Caption
+			response = c.Message.ReplyTo.Caption
 		}
 	} else if len(args) >= 2 {
 		response = strings.Join(args[1:], " ")
@@ -65,7 +63,7 @@ func (m *FiltersModule) handleFilter(c tele.Context) error {
 	return c.Send(fmt.Sprintf("Filter saved!\nTrigger: %s\nResponse: %s", trigger, response))
 }
 
-func (m *FiltersModule) handleStop(c tele.Context) error {
+func (m *FiltersModule) handleStop(c *bot.Context) error {
 	target, err := m.Bot.GetTargetChat(c)
 	if err != nil {
 		return c.Send("Error resolving chat.")
@@ -73,7 +71,7 @@ func (m *FiltersModule) handleStop(c tele.Context) error {
 	if !m.Bot.IsAdmin(target, c.Sender()) {
 		return c.Send("You must be an admin to use this command.")
 	}
-	args := c.Args()
+	args := c.Args
 	if len(args) < 1 {
 		return c.Send("Usage: /stop <trigger>")
 	}
@@ -88,7 +86,7 @@ func (m *FiltersModule) handleStop(c tele.Context) error {
 	return c.Send(fmt.Sprintf("Filter '%s' deleted.", trigger))
 }
 
-func (m *FiltersModule) handleFilters(c tele.Context) error {
+func (m *FiltersModule) handleFilters(c *bot.Context) error {
 	target, err := m.Bot.GetTargetChat(c)
 	if err != nil {
 		return c.Send("Error resolving chat.")
@@ -107,10 +105,10 @@ func (m *FiltersModule) handleFilters(c tele.Context) error {
 		msg += fmt.Sprintf("• <code>%s</code>\n", html.EscapeString(f.Trigger))
 	}
 
-	return c.Send(msg, tele.ModeHTML)
+	return c.Send(msg, "HTML")
 }
 
-func (m *FiltersModule) handleText(c tele.Context) error {
+func (m *FiltersModule) handleText(c *bot.Context) error {
 	text := c.Text()
 	if strings.HasPrefix(text, "/") {
 		return nil
@@ -130,7 +128,7 @@ func (m *FiltersModule) handleText(c tele.Context) error {
 
 	for _, f := range filters {
 		if strings.Contains(lowerText, strings.ToLower(f.Trigger)) {
-			return c.Send(f.Response, tele.ModeMarkdown)
+			return c.Send(f.Response, "Markdown")
 		}
 	}
 

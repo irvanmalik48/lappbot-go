@@ -18,80 +18,33 @@ import (
 	"lappbot/internal/modules/topics"
 	"lappbot/internal/modules/utility"
 	"lappbot/internal/store"
-
-	tele "gopkg.in/telebot.v4"
 )
 
 func main() {
 	cfg := config.Load()
 
-	if err := store.RunMigrations(cfg); err != nil {
-		log.Fatalf("Failed to run migrations: %v", err)
-	}
-
-	db, err := store.New(cfg)
+	st, err := store.New(cfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		log.Fatal(err)
 	}
-	defer db.Close()
 
-	b, err := bot.New(cfg, db)
+	b, err := bot.New(cfg, st)
 	if err != nil {
-		log.Fatalf("Failed to create bot: %v", err)
+		log.Fatal(err)
 	}
 
-	greetingModule := greeting.New(b, db)
-	greetingModule.Register()
-
-	captchaModule := captcha.New(b, db)
-	captchaModule.Register()
-
-	moderationModule := moderation.New(b, db)
-	moderationModule.Register()
-
-	purgeModule := purge.New(b, db)
-	purgeModule.Register()
-
-	notesModule := notes.New(b, db)
-	notesModule.Register()
-
-	utilityModule := utility.New(b, cfg)
-	utilityModule.Register()
-
-	connectionsModule := connections.New(b, db)
-	connectionsModule.Register()
-
-	filtersModule := filters.NewFilters(b, db)
-	filtersModule.Register()
-
-	antiraidModule := antiraid.New(b, db)
-	antiraidModule.Register()
-
-	antifloodModule := antiflood.New(b, db)
-	antifloodModule.Register()
-
-	topicsModule := topics.New(b, cfg)
-	topicsModule.Register()
-
-	cursedModule := cursed.New(b, cfg)
-	cursedModule.Register()
-
-	b.Bot.Handle(tele.OnUserJoined, func(c tele.Context) error {
-		if err := greetingModule.OnUserJoined(c); err != nil {
-			log.Println("Greeting error:", err)
-		}
-		if err := captchaModule.OnUserJoined(c); err != nil {
-			log.Println("Captcha error:", err)
-		}
-		return nil
-	})
-
-	b.Bot.Handle(tele.OnUserLeft, func(c tele.Context) error {
-		if err := greetingModule.OnUserLeft(c); err != nil {
-			log.Println("Goodbye error:", err)
-		}
-		return nil
-	})
+	utility.New(b, cfg).Register()
+	moderation.New(b, st).Register()
+	greeting.New(b, st).Register()
+	captcha.New(b, st).Register()
+	filters.New(b, st).Register()
+	antiflood.New(b, st).Register()
+	antiraid.New(b, st).Register()
+	connections.New(b, st).Register()
+	topics.New(b, cfg).Register()
+	cursed.New(b, cfg).Register()
+	notes.New(b, st).Register()
+	purge.New(b, st).Register()
 
 	b.Start()
 }

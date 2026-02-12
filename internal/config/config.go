@@ -23,6 +23,10 @@ type Config struct {
 	ValkeyPort     int
 	ValkeyPassword string
 	BotAPIURL      string
+
+	TelegramAPIID   int
+	TelegramAPIHash string
+	ReportChannelID int64
 }
 
 func Load() *Config {
@@ -46,6 +50,10 @@ func Load() *Config {
 		ValkeyPort:     getEnvAsInt("VALKEY_PORT", 6379),
 		ValkeyPassword: getEnv("VALKEY_PASSWORD", ""),
 		BotAPIURL:      getEnv("BOT_API_URL", "http://localhost:8081"),
+
+		TelegramAPIID:   getEnvAsInt("TELEGRAM_API_ID", 0),
+		TelegramAPIHash: getEnv("TELEGRAM_API_HASH", ""),
+		ReportChannelID: getEnvAsInt64("REPORT_CHANNEL_ID", 0),
 	}
 }
 

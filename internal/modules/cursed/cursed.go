@@ -5,8 +5,6 @@ import (
 	"lappbot/internal/config"
 	"math/rand"
 	"strings"
-
-	tele "gopkg.in/telebot.v4"
 )
 
 type Module struct {
@@ -19,13 +17,13 @@ func New(b *bot.Bot, cfg *config.Config) *Module {
 }
 
 func (m *Module) Register() {
-	m.Bot.Bot.Handle("/zalgo", m.handleZalgo)
-	m.Bot.Bot.Handle("/uwuify", m.handleUwuify)
-	m.Bot.Bot.Handle("/emojify", m.handleEmojify)
-	m.Bot.Bot.Handle("/leetify", m.handleLeetify)
+	m.Bot.Handle("/zalgo", m.handleZalgo)
+	m.Bot.Handle("/uwuify", m.handleUwuify)
+	m.Bot.Handle("/emojify", m.handleEmojify)
+	m.Bot.Handle("/leetify", m.handleLeetify)
 }
 
-func (m *Module) handleZalgo(c tele.Context) error {
+func (m *Module) handleZalgo(c *bot.Context) error {
 	input := getInput(c)
 	if input == "" {
 		return c.Send("Usage: /zalgo <text> (or reply to a message)")
@@ -33,7 +31,7 @@ func (m *Module) handleZalgo(c tele.Context) error {
 	return c.Send(zalgo(input))
 }
 
-func (m *Module) handleUwuify(c tele.Context) error {
+func (m *Module) handleUwuify(c *bot.Context) error {
 	input := getInput(c)
 	if input == "" {
 		return c.Send("Usage: /uwuify <text> (or reply to a message)")
@@ -41,7 +39,7 @@ func (m *Module) handleUwuify(c tele.Context) error {
 	return c.Send(uwuify(input))
 }
 
-func (m *Module) handleEmojify(c tele.Context) error {
+func (m *Module) handleEmojify(c *bot.Context) error {
 	input := getInput(c)
 	if input == "" {
 		return c.Send("Usage: /emojify <text> (or reply to a message)")
@@ -49,7 +47,7 @@ func (m *Module) handleEmojify(c tele.Context) error {
 	return c.Send(emojify(input))
 }
 
-func (m *Module) handleLeetify(c tele.Context) error {
+func (m *Module) handleLeetify(c *bot.Context) error {
 	input := getInput(c)
 	if input == "" {
 		return c.Send("Usage: /leetify <text> (or reply to a message)")
@@ -57,17 +55,17 @@ func (m *Module) handleLeetify(c tele.Context) error {
 	return c.Send(leetify(input))
 }
 
-func getInput(c tele.Context) string {
-	if len(c.Args()) > 0 {
-		return strings.Join(c.Args(), " ")
+func getInput(c *bot.Context) string {
+	if len(c.Args) > 0 {
+		return strings.Join(c.Args, " ")
 	}
 
-	if c.Message().IsReply() {
-		if c.Message().ReplyTo.Text != "" {
-			return c.Message().ReplyTo.Text
+	if c.Message.ReplyTo != nil {
+		if c.Message.ReplyTo.Text != "" {
+			return c.Message.ReplyTo.Text
 		}
-		if c.Message().ReplyTo.Caption != "" {
-			return c.Message().ReplyTo.Caption
+		if c.Message.ReplyTo.Caption != "" {
+			return c.Message.ReplyTo.Caption
 		}
 	}
 

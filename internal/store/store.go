@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"lappbot/internal/config"
@@ -81,12 +82,12 @@ func (s *Store) Ping() (map[string]time.Duration, error) {
 	return res, nil
 }
 func (s *Store) SetConnection(adminID int64, chatID int64) error {
-	key := fmt.Sprintf("conn:%d", adminID)
-	return s.Valkey.Do(context.Background(), s.Valkey.B().Set().Key(key).Value(fmt.Sprintf("%d", chatID)).Ex(30*time.Minute).Build()).Error()
+	key := "conn:" + strconv.FormatInt(adminID, 10)
+	return s.Valkey.Do(context.Background(), s.Valkey.B().Set().Key(key).Value(strconv.FormatInt(chatID, 10)).Ex(30*time.Minute).Build()).Error()
 }
 
 func (s *Store) GetConnection(adminID int64) (int64, error) {
-	key := fmt.Sprintf("conn:%d", adminID)
+	key := "conn:" + strconv.FormatInt(adminID, 10)
 	val, err := s.Valkey.Do(context.Background(), s.Valkey.B().Get().Key(key).Build()).ToInt64()
 	if err != nil {
 		return 0, err
@@ -95,7 +96,7 @@ func (s *Store) GetConnection(adminID int64) (int64, error) {
 }
 
 func (s *Store) Disconnect(adminID int64) error {
-	key := fmt.Sprintf("conn:%d", adminID)
+	key := "conn:" + strconv.FormatInt(adminID, 10)
 	return s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(key).Build()).Error()
 }
 
@@ -105,7 +106,7 @@ type ConnectionHistoryItem struct {
 }
 
 func (s *Store) AddConnectionHistory(adminID int64, chatID int64, chatTitle string) error {
-	key := fmt.Sprintf("conn_hist:%d", adminID)
+	key := "conn_hist:" + strconv.FormatInt(adminID, 10)
 	item := ConnectionHistoryItem{ChatID: chatID, ChatTitle: chatTitle}
 	data, err := json.Marshal(item)
 	if err != nil {
@@ -118,13 +119,13 @@ func (s *Store) AddConnectionHistory(adminID int64, chatID int64, chatTitle stri
 }
 
 func (s *Store) GetConnectionHistory(adminID int64) ([]ConnectionHistoryItem, error) {
-	key := fmt.Sprintf("conn_hist:%d", adminID)
+	key := "conn_hist:" + strconv.FormatInt(adminID, 10)
 	vals, err := s.Valkey.Do(context.Background(), s.Valkey.B().Lrange().Key(key).Start(0).Stop(-1).Build()).AsStrSlice()
 	if err != nil {
 		return nil, err
 	}
 
-	var history []ConnectionHistoryItem
+	history := make([]ConnectionHistoryItem, 0, 10)
 	for _, v := range vals {
 		var item ConnectionHistoryItem
 		if err := json.Unmarshal([]byte(v), &item); err == nil {

@@ -12,7 +12,6 @@ import (
 	"lappbot/internal/store"
 
 	"github.com/steambap/captcha"
-	tele "gopkg.in/telebot.v4"
 )
 
 type Module struct {
@@ -27,12 +26,13 @@ func New(b *bot.Bot, s *store.Store) *Module {
 const CaptchaDuration = 5 * time.Minute
 
 func (m *Module) Register() {
-	m.Bot.Bot.Use(m.CheckCaptcha)
-	m.Bot.Bot.Handle("/captcha", m.handleCaptchaCommand)
+	m.Bot.Use(m.CheckCaptcha)
+	m.Bot.Handle("/captcha", m.handleCaptchaCommand)
+	m.Bot.Handle("new_chat_members", m.OnUserJoined)
 }
 
-func (m *Module) CheckCaptcha(next tele.HandlerFunc) tele.HandlerFunc {
-	return func(c tele.Context) error {
+func (m *Module) CheckCaptcha(next bot.HandlerFunc) bot.HandlerFunc {
+	return func(c *bot.Context) error {
 		if c.Text() == "" {
 			return next(c)
 		}
@@ -46,29 +46,36 @@ func (m *Module) CheckCaptcha(next tele.HandlerFunc) tele.HandlerFunc {
 
 		text := strings.TrimSpace(c.Text())
 		if strings.EqualFold(text, val) {
-			rights := tele.Rights{
-				CanSendMessages: true,
-				CanSendMedia:    true,
-				CanSendPolls:    true,
-				CanSendOther:    true,
-				CanAddPreviews:  true,
+			permissions := map[string]bool{
+				"can_send_messages":         true,
+				"can_send_media_messages":   true,
+				"can_send_polls":            true,
+				"can_send_other_messages":   true,
+				"can_add_web_page_previews": true,
 			}
-			m.Bot.Bot.Restrict(c.Chat(), &tele.ChatMember{User: c.Sender(), Rights: rights})
+			m.Bot.Raw("restrictChatMember", map[string]interface{}{
+				"chat_id":     c.Chat().ID,
+				"user_id":     c.Sender().ID,
+				"permissions": permissions,
+			})
 
 			m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Del().Key(key).Build())
 
 			msgKey := fmt.Sprintf("captcha_msg:%d:%d", c.Chat().ID, c.Sender().ID)
 			msgIDStr, _ := m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Get().Key(msgKey).Build()).ToString()
 			if msgIDStr != "" {
-				msgID := 0
+				var msgID int
 				fmt.Sscanf(msgIDStr, "%d", &msgID)
-				c.Bot().Delete(&tele.Message{ID: msgID, Chat: c.Chat()})
+				m.Bot.Raw("deleteMessage", map[string]interface{}{
+					"chat_id":    c.Chat().ID,
+					"message_id": msgID,
+				})
 				m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Del().Key(msgKey).Build())
 			}
 
 			c.Delete()
 
-			return c.Reply("Verification successful! You can now chat.")
+			return c.Send("Verification successful! You can now chat.")
 		} else {
 			c.Delete()
 			return nil
@@ -76,69 +83,80 @@ func (m *Module) CheckCaptcha(next tele.HandlerFunc) tele.HandlerFunc {
 	}
 }
 
-func (m *Module) OnUserJoined(c tele.Context) error {
-	group, err := m.Store.GetGroup(c.Chat().ID)
-	if err != nil {
-		return err
-	}
-
-	if group == nil || !group.CaptchaEnabled {
+func (m *Module) OnUserJoined(c *bot.Context) error {
+	if len(c.Update.Message.NewChatMembers) == 0 {
 		return nil
 	}
 
-	rights := tele.Rights{
-		CanSendMessages: true,
-		CanSendMedia:    false,
-		CanSendPolls:    false,
-		CanSendOther:    false,
-		CanAddPreviews:  false,
-	}
+	for _, u := range c.Update.Message.NewChatMembers {
+		if u.IsBot {
+			continue
+		}
 
-	err = m.Bot.Bot.Restrict(c.Chat(), &tele.ChatMember{User: c.Sender(), Rights: rights})
-	if err != nil {
-		return c.Send(fmt.Sprintf("Failed to restrict user %s for CAPTCHA verification. Am I admin?", c.Sender().FirstName))
-	}
+		group, err := m.Store.GetGroup(c.Chat().ID)
+		if err != nil {
+			continue
+		}
 
-	img, err := captcha.New(150, 50)
-	if err != nil {
-		return c.Send("Internal error generating captcha.")
-	}
+		if group == nil || !group.CaptchaEnabled {
+			continue
+		}
 
-	key := fmt.Sprintf("captcha:%d:%d", c.Chat().ID, c.Sender().ID)
-	err = m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Set().Key(key).Value(img.Text).Ex(CaptchaDuration).Build()).Error()
-	if err != nil {
-		return c.Send("Internal error generating captcha.")
-	}
+		permissions := map[string]bool{
+			"can_send_messages":         true,
+			"can_send_media_messages":   false,
+			"can_send_polls":            false,
+			"can_send_other_messages":   false,
+			"can_add_web_page_previews": false,
+		}
+		m.Bot.Raw("restrictChatMember", map[string]interface{}{
+			"chat_id":     c.Chat().ID,
+			"user_id":     u.ID,
+			"permissions": permissions,
+		})
 
-	buf := new(bytes.Buffer)
-	if err := img.WriteImage(buf); err != nil {
-		return err
-	}
+		img, err := captcha.New(150, 50)
+		if err != nil {
+			continue
+		}
 
-	photo := &tele.Photo{File: tele.FromReader(buf)}
-	if group.GreetingEnabled && group.GreetingMessage != "" {
-		photo.Caption = utility.ReplacePlaceholders(group.GreetingMessage, c.Sender())
-	} else {
-		photo.Caption = "Please type the code in the image to verify you are human."
-	}
+		key := fmt.Sprintf("captcha:%d:%d", c.Chat().ID, u.ID)
+		err = m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Set().Key(key).Value(img.Text).Ex(CaptchaDuration).Build()).Error()
+		if err != nil {
+			continue
+		}
 
-	msg, err := c.Bot().Send(c.Chat(), photo, tele.ModeMarkdown)
-	if err != nil {
-		return err
-	}
+		buf := new(bytes.Buffer)
+		if err := img.WriteImage(buf); err != nil {
+			continue
+		}
 
-	msgKey := fmt.Sprintf("captcha_msg:%d:%d", c.Chat().ID, c.Sender().ID)
-	m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Set().Key(msgKey).Value(fmt.Sprintf("%d", msg.ID)).Ex(CaptchaDuration).Build())
+		code := img.Text
+
+		caption := "Please type the code below to verify you are human."
+		if group.GreetingEnabled && group.GreetingMessage != "" {
+			userPtr := &u
+			caption = utility.ReplacePlaceholders(group.GreetingMessage, userPtr)
+			caption += "\n\nVerification Code: " + code
+		} else {
+			caption = fmt.Sprintf("Welcome! Please type this code to verify: %s", code)
+		}
+
+		m.Bot.Raw("sendMessage", map[string]interface{}{
+			"chat_id": c.Chat().ID,
+			"text":    caption,
+		})
+	}
 
 	return nil
 }
 
-func (m *Module) handleCaptchaCommand(c tele.Context) error {
+func (m *Module) handleCaptchaCommand(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 		return c.Send("You must be an admin to use this command.")
 	}
 
-	args := c.Args()
+	args := c.Args
 	if len(args) == 0 {
 		return c.Send("Usage: /captcha <on|off>")
 	}

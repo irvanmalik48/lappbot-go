@@ -5,10 +5,9 @@ import (
 	"lappbot/internal/bot"
 	"lappbot/internal/config"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
-
-	tele "gopkg.in/telebot.v4"
 )
 
 type Module struct {
@@ -21,32 +20,33 @@ func New(b *bot.Bot, cfg *config.Config) *Module {
 }
 
 func (m *Module) Register() {
-	m.Bot.Bot.Handle("/ping", m.handlePing)
-	m.Bot.Bot.Handle("/start", m.handleStart)
-	m.Bot.Bot.Handle("/version", m.handleVersion)
-	m.Bot.Bot.Handle("/help", m.handleHelp)
-	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_main"}, m.onHelpCallback)
-	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_mod"}, m.onHelpCallback)
-	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_settings"}, m.onHelpCallback)
-	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_filters"}, m.onHelpCallback)
-	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_admin"}, m.onHelpCallback)
-	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_antispam"}, m.onHelpCallback)
-	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_warns"}, m.onHelpCallback)
-	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_realm"}, m.onHelpCallback)
-	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_purges"}, m.onHelpCallback)
-	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_notes"}, m.onHelpCallback)
-	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_conn"}, m.onHelpCallback)
-	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_topics"}, m.onHelpCallback)
-	m.Bot.Bot.Handle(&tele.Btn{Unique: "help_cursed"}, m.onHelpCallback)
-	m.Bot.Bot.Handle("/report", m.handleReport)
+	m.Bot.Handle("/ping", m.handlePing)
+	m.Bot.Handle("/start", m.handleStart)
+	m.Bot.Handle("/version", m.handleVersion)
+	m.Bot.Handle("/help", m.handleHelp)
+	m.Bot.Handle("help_main", m.onHelpCallback)
+	m.Bot.Handle("help_mod", m.onHelpCallback)
+	m.Bot.Handle("help_settings", m.onHelpCallback)
+	m.Bot.Handle("help_filters", m.onHelpCallback)
+	m.Bot.Handle("help_admin", m.onHelpCallback)
+	m.Bot.Handle("help_antispam", m.onHelpCallback)
+	m.Bot.Handle("help_warns", m.onHelpCallback)
+	m.Bot.Handle("help_realm", m.onHelpCallback)
+	m.Bot.Handle("help_purges", m.onHelpCallback)
+	m.Bot.Handle("help_notes", m.onHelpCallback)
+	m.Bot.Handle("help_conn", m.onHelpCallback)
+	m.Bot.Handle("help_topics", m.onHelpCallback)
+	m.Bot.Handle("help_cursed", m.onHelpCallback)
+	m.Bot.Handle("/report", m.handleReport)
 }
 
-func (m *Module) handleStart(c tele.Context) error {
+func (m *Module) handleStart(c *bot.Context) error {
 	return c.Send(fmt.Sprintf("Hello! I am %s. Use /help to see what I can do.", m.Cfg.BotName))
 }
 
-func (m *Module) handlePing(c tele.Context) error {
-	latency := time.Since(c.Message().Time()).Round(time.Millisecond)
+func (m *Module) handlePing(c *bot.Context) error {
+	latency := time.Duration(0)
+
 	storePings, err := m.Bot.Store.Ping()
 	if err != nil {
 		return c.Send(fmt.Sprintf("Pong! Latency: %v\nError checking store: %v", latency, err))
@@ -59,55 +59,41 @@ func (m *Module) handlePing(c tele.Context) error {
 	msg := fmt.Sprintf("**PONG!**\n\nBot: `%v`\nDatabase: `%v`\nValkey: `%v`\n\nUptime: `%v`",
 		latency, storePings["database"].Round(time.Millisecond), storePings["valkey"].Round(time.Millisecond), uptimeStr)
 
-	return c.Send(msg, tele.ModeMarkdown)
+	return c.Send(msg, "Markdown")
 }
 
-func (m *Module) handleVersion(c tele.Context) error {
-	return c.Send(fmt.Sprintf("**%s**\nVersion: v%s\nGo: %s\nOS: %s/%s", m.Cfg.BotName, m.Cfg.BotVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH), tele.ModeMarkdown)
+func (m *Module) handleVersion(c *bot.Context) error {
+	return c.Send(fmt.Sprintf("**%s**\nVersion: v%s\nGo: %s\nOS: %s/%s", m.Cfg.BotName, m.Cfg.BotVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH), "Markdown")
 }
 
-func (m *Module) handleHelp(c tele.Context) error {
+func (m *Module) handleHelp(c *bot.Context) error {
 	text, markup := m.getHelpMenu("main")
-	return c.Send(text, markup, tele.ModeMarkdown)
+	return c.Send(text, markup, "Markdown")
 }
 
-func (m *Module) onHelpCallback(c tele.Context) error {
-	defer c.Respond()
+func (m *Module) onHelpCallback(c *bot.Context) error {
+	c.Respond()
 	text, markup := m.getHelpMenu(c.Data())
-	return c.Edit(text, markup, tele.ModeMarkdown)
+	return c.Edit(text, markup, "Markdown")
 }
 
-func (m *Module) getHelpMenu(section string) (string, *tele.ReplyMarkup) {
-	markup := &tele.ReplyMarkup{}
-	backBtn := markup.Data("« Back", "help_main", "main")
+func (m *Module) getHelpMenu(section string) (string, *bot.ReplyMarkup) {
+	markup := &bot.ReplyMarkup{}
+
+	var backBtn bot.InlineKeyboardButton
+	backBtn.Text = "« Back"
+	backBtn.CallbackData = "help_main"
 
 	var text string
 	switch section {
 	case "main":
-		markup.Inline(
-			markup.Row(
-				markup.Data("Moderation", "help_mod", "mod"),
-				markup.Data("Settings", "help_settings", "settings"),
-			),
-			markup.Row(
-				markup.Data("Filters", "help_filters", "filters"),
-				markup.Data("Warnings", "help_warns", "warns"),
-				markup.Data("Admin", "help_admin", "admin"),
-			),
-			markup.Row(
-				markup.Data("Realm", "help_realm", "realm"),
-				markup.Data("Anti-Spam", "help_antispam", "antispam"),
-				markup.Data("Purges", "help_purges", "purges"),
-			),
-			markup.Row(
-				markup.Data("Notes", "help_notes", "notes"),
-				markup.Data("Connection", "help_conn", "conn"),
-			),
-			markup.Row(
-				markup.Data("Topics", "help_topics", "topics"),
-				markup.Data("Cursed", "help_cursed", "cursed"),
-			),
-		)
+		markup.InlineKeyboard = [][]bot.InlineKeyboardButton{
+			{{Text: "Moderation", CallbackData: "help_mod"}, {Text: "Settings", CallbackData: "help_settings"}},
+			{{Text: "Filters", CallbackData: "help_filters"}, {Text: "Warnings", CallbackData: "help_warns"}, {Text: "Admin", CallbackData: "help_admin"}},
+			{{Text: "Realm", CallbackData: "help_realm"}, {Text: "Anti-Spam", CallbackData: "help_antispam"}, {Text: "Purges", CallbackData: "help_purges"}},
+			{{Text: "Notes", CallbackData: "help_notes"}, {Text: "Connection", CallbackData: "help_conn"}},
+			{{Text: "Topics", CallbackData: "help_topics"}, {Text: "Cursed", CallbackData: "help_cursed"}},
+		}
 		return "Welcome to Lappbot Help.\nSelect a category:", markup
 
 	case "cursed":
@@ -224,16 +210,18 @@ func (m *Module) getHelpMenu(section string) (string, *tele.ReplyMarkup) {
 (Bot Owner Only)`
 	}
 
-	markup.Inline(markup.Row(backBtn))
+	markup.InlineKeyboard = [][]bot.InlineKeyboardButton{
+		{backBtn},
+	}
 	return text, markup
 }
 
-func (m *Module) handleReport(c tele.Context) error {
-	if !c.Message().IsReply() {
+func (m *Module) handleReport(c *bot.Context) error {
+	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user's message to report it.")
 	}
 
-	reason := c.Args()
+	reason := c.Args
 	reasonStr := "No reason"
 	if len(reason) > 0 {
 		reasonStr = ""
@@ -242,36 +230,53 @@ func (m *Module) handleReport(c tele.Context) error {
 		}
 	}
 
-	reportedUser := c.Message().ReplyTo.Sender
+	reportedUser := c.Message.ReplyTo.From
 	reporter := c.Sender()
 
-	reportMsg := fmt.Sprintf("REPORT!\nGroup: %s\nReporter: [%s](tg://user?id=%d)\nReported: [%s](tg://user?id=%d)\nReason: %s",
-		c.Chat().Title, reporter.FirstName, reporter.ID, reportedUser.FirstName, reportedUser.ID, reasonStr)
+	var sb strings.Builder
+	sb.WriteString("REPORT!\n")
+	sb.WriteString("Group: ")
+	sb.WriteString(c.Chat().Title)
+	sb.WriteString("\n")
+	sb.WriteString("Reporter: [")
+	sb.WriteString(reporter.FirstName)
+	sb.WriteString("](tg://user?id=")
+	sb.WriteString(strconv.FormatInt(reporter.ID, 10))
+	sb.WriteString(")\n")
+	sb.WriteString("Reported: [")
+	sb.WriteString(reportedUser.FirstName)
+	sb.WriteString("](tg://user?id=")
+	sb.WriteString(strconv.FormatInt(reportedUser.ID, 10))
+	sb.WriteString(")\n")
+	sb.WriteString("Reason: ")
+	sb.WriteString(reasonStr)
 
-	admins, err := c.Bot().AdminsOf(c.Chat())
-	if err != nil {
-		return c.Send("Failed to fetch admins.")
+	reportMsg := sb.String()
+
+	targetID := m.Cfg.ReportChannelID
+	if targetID == 0 {
+		targetID = m.Cfg.BotOwnerID
 	}
 
-	sentCount := 0
-	for _, admin := range admins {
-		if !admin.User.IsBot {
-			_, err := c.Bot().Send(admin.User, reportMsg)
-			if err == nil {
-				sentCount++
-			}
+	if targetID != 0 {
+		payload := map[string]interface{}{
+			"chat_id":    targetID,
+			"text":       reportMsg,
+			"parse_mode": "Markdown",
 		}
-	}
-
-	if sentCount == 0 {
-		return c.Send("Report failed (Admins haven't started bot).")
+		m.Bot.Raw("sendMessage", payload)
 	}
 	return c.Send("Report sent to admins.")
 }
 
-func ReplacePlaceholders(msg string, user *tele.User) string {
-	msg = strings.ReplaceAll(msg, "{firstname}", fmt.Sprintf("[%s](tg://user?id=%d)", user.FirstName, user.ID))
-	msg = strings.ReplaceAll(msg, "{username}", user.Username)
-	msg = strings.ReplaceAll(msg, "{userid}", fmt.Sprintf("%d", user.ID))
-	return msg
+func ReplacePlaceholders(msg string, user *bot.User) string {
+	userIDStr := strconv.FormatInt(user.ID, 10)
+	firstNameLink := "[" + user.FirstName + "](tg://user?id=" + userIDStr + ")"
+
+	r := strings.NewReplacer(
+		"{firstname}", firstNameLink,
+		"{username}", user.Username,
+		"{userid}", userIDStr,
+	)
+	return r.Replace(msg)
 }

@@ -2,14 +2,12 @@ package moderation
 
 import (
 	"context"
-	"fmt"
 	"lappbot/internal/bot"
 	"lappbot/internal/store"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
-
-	tele "gopkg.in/telebot.v4"
 )
 
 type BlacklistCache struct {
@@ -40,54 +38,54 @@ func New(b *bot.Bot, s *store.Store) *Module {
 }
 
 func (m *Module) Register() {
-	m.Bot.Bot.Handle("/warn", m.handleWarn)
-	m.Bot.Bot.Handle("/dwarn", m.handleDWarn)
-	m.Bot.Bot.Handle("/swarn", m.handleSWarn)
-	m.Bot.Bot.Handle("/unwarn", m.handleRmWarn)
-	m.Bot.Bot.Handle("/rmwarn", m.handleRmWarn)
-	m.Bot.Bot.Handle("/resetwarn", m.handleResetWarns)
-	m.Bot.Bot.Handle("/resetallwarns", m.handleResetAllWarns)
-	m.Bot.Bot.Handle("/warns", m.handleMyWarns)
-	m.Bot.Bot.Handle("/warnings", m.handleWarnings)
-	m.Bot.Bot.Handle("/warnlimit", m.handleWarnLimit)
-	m.Bot.Bot.Handle("/warnmode", m.handleWarnMode)
-	m.Bot.Bot.Handle("/warntime", m.handleWarnTime)
-	m.Bot.Bot.Handle(&tele.Btn{Unique: "btn_remove_warn"}, m.onRemoveWarnBtn)
+	m.Bot.Handle("/warn", m.handleWarn)
+	m.Bot.Handle("/dwarn", m.handleDWarn)
+	m.Bot.Handle("/swarn", m.handleSWarn)
+	m.Bot.Handle("/unwarn", m.handleRmWarn)
+	m.Bot.Handle("/rmwarn", m.handleRmWarn)
+	m.Bot.Handle("/resetwarn", m.handleResetWarns)
+	m.Bot.Handle("/resetallwarns", m.handleResetAllWarns)
+	m.Bot.Handle("/warns", m.handleMyWarns)
+	m.Bot.Handle("/warnings", m.handleWarnings)
+	m.Bot.Handle("/warnlimit", m.handleWarnLimit)
+	m.Bot.Handle("/warnmode", m.handleWarnMode)
+	m.Bot.Handle("/warntime", m.handleWarnTime)
+	m.Bot.Handle("btn_remove_warn", m.onRemoveWarnBtn)
 
-	m.Bot.Bot.Handle("/kick", m.handleKick)
-	m.Bot.Bot.Handle("/skick", m.handleSilentKick)
+	m.Bot.Handle("/kick", m.handleKick)
+	m.Bot.Handle("/skick", m.handleSilentKick)
 
-	m.Bot.Bot.Handle("/ban", m.handleBan)
-	m.Bot.Bot.Handle("/unban", m.handleUnban)
-	m.Bot.Bot.Handle("/sban", m.handleSilentBan)
-	m.Bot.Bot.Handle("/tban", m.handleTimedBan)
-	m.Bot.Bot.Handle("/rban", m.handleRealmBan)
+	m.Bot.Handle("/ban", m.handleBan)
+	m.Bot.Handle("/unban", m.handleUnban)
+	m.Bot.Handle("/sban", m.handleSilentBan)
+	m.Bot.Handle("/tban", m.handleTimedBan)
+	m.Bot.Handle("/rban", m.handleRealmBan)
 
-	m.Bot.Bot.Handle("/mute", m.handleMute)
-	m.Bot.Bot.Handle("/unmute", m.handleUnmute)
-	m.Bot.Bot.Handle("/smute", m.handleSilentMute)
-	m.Bot.Bot.Handle("/tmute", m.handleTimedMute)
-	m.Bot.Bot.Handle("/rmute", m.handleRealmMute)
+	m.Bot.Handle("/mute", m.handleMute)
+	m.Bot.Handle("/unmute", m.handleUnmute)
+	m.Bot.Handle("/smute", m.handleSilentMute)
+	m.Bot.Handle("/tmute", m.handleTimedMute)
+	m.Bot.Handle("/rmute", m.handleRealmMute)
 
-	m.Bot.Bot.Handle("/pin", m.handlePin)
-	m.Bot.Bot.Handle("/lock", m.handleLock)
-	m.Bot.Bot.Handle("/unlock", m.handleUnlock)
+	m.Bot.Handle("/pin", m.handlePin)
+	m.Bot.Handle("/lock", m.handleLock)
+	m.Bot.Handle("/unlock", m.handleUnlock)
 
-	m.Bot.Bot.Handle("/bl", m.handleBlacklistAdd)
-	m.Bot.Bot.Handle("/unbl", m.handleBlacklistRemove)
-	m.Bot.Bot.Handle("/blacklist", m.handleBlacklistList)
+	m.Bot.Handle("/bl", m.handleBlacklistAdd)
+	m.Bot.Handle("/unbl", m.handleBlacklistRemove)
+	m.Bot.Handle("/blacklist", m.handleBlacklistList)
 
-	m.Bot.Bot.Handle("/approve", m.handleApprove)
-	m.Bot.Bot.Handle("/unapprove", m.handleUnapprove)
-	m.Bot.Bot.Handle("/promote", m.handlePromote)
-	m.Bot.Bot.Handle("/demote", m.handleDemote)
+	m.Bot.Handle("/approve", m.handleApprove)
+	m.Bot.Handle("/unapprove", m.handleUnapprove)
+	m.Bot.Handle("/promote", m.handlePromote)
+	m.Bot.Handle("/demote", m.handleDemote)
 
-	m.Bot.Bot.Handle("/refreshcache", m.handleRefreshCache)
+	m.Bot.Handle("/refreshcache", m.handleRefreshCache)
 
-	m.Bot.Bot.Use(m.CheckBlacklist)
+	m.Bot.Use(m.CheckBlacklist)
 }
 
-func (m *Module) handleRefreshCache(c tele.Context) error {
+func (m *Module) handleRefreshCache(c *bot.Context) error {
 	if c.Sender().ID != m.Bot.Cfg.BotOwnerID {
 		return c.Send("This command is restricted to the bot owner.")
 	}
@@ -107,8 +105,8 @@ func (m *Module) handleRefreshCache(c tele.Context) error {
 	return c.Send("Cache refreshed successfully.")
 }
 
-func mention(u *tele.User) string {
+func mention(u *bot.User) string {
 	name := strings.ReplaceAll(u.FirstName, "]", "\\]")
 	name = strings.ReplaceAll(name, "[", "\\[")
-	return fmt.Sprintf("[%s](tg://user?id=%d)", name, u.ID)
+	return "[" + name + "](tg://user?id=" + strconv.FormatInt(u.ID, 10) + ")"
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -28,7 +28,7 @@ func (s *Store) AddFilter(groupID int64, trigger, response string) error {
 	      ON CONFLICT (group_id, trigger) DO UPDATE SET response = $4`
 	_, err = s.db.Exec(context.Background(), q, id, groupID, trigger, response)
 	if err == nil {
-		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("filters:%d", groupID)).Build())
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key("filters:"+strconv.FormatInt(groupID, 10)).Build())
 	}
 	return err
 }
@@ -47,7 +47,7 @@ func (s *Store) GetFilter(groupID int64, trigger string) (string, error) {
 }
 
 func (s *Store) GetFilters(groupID int64) ([]Filter, error) {
-	cacheKey := fmt.Sprintf("filters:%d", groupID)
+	cacheKey := "filters:" + strconv.FormatInt(groupID, 10)
 	val, err := s.Valkey.Do(context.Background(), s.Valkey.B().Get().Key(cacheKey).Build()).AsBytes()
 	if err == nil {
 		var filters []Filter
@@ -63,7 +63,7 @@ func (s *Store) GetFilters(groupID int64) ([]Filter, error) {
 	}
 	defer rows.Close()
 
-	var filters []Filter
+	filters := make([]Filter, 0)
 	for rows.Next() {
 		var f Filter
 		if err := rows.Scan(&f.ID, &f.Trigger, &f.Response); err != nil {
@@ -83,7 +83,7 @@ func (s *Store) DeleteFilter(groupID int64, trigger string) error {
 	q := `DELETE FROM filters WHERE group_id = $1 AND trigger = $2`
 	_, err := s.db.Exec(context.Background(), q, groupID, trigger)
 	if err == nil {
-		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("filters:%d", groupID)).Build())
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key("filters:"+strconv.FormatInt(groupID, 10)).Build())
 	}
 	return err
 }

@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -103,7 +102,7 @@ func (s *Store) AddBlacklistItem(groupID int64, kind, value, action, duration st
           SET action = EXCLUDED.action, action_duration = EXCLUDED.action_duration`
 	_, err = s.db.Exec(context.Background(), q, id, groupID, kind, value, action, duration)
 	if err == nil {
-		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("blacklist:%d", groupID)).Build())
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key("blacklist:"+strconv.FormatInt(groupID, 10)).Build())
 	}
 	return err
 }
@@ -112,13 +111,13 @@ func (s *Store) RemoveBlacklistItem(groupID int64, kind, value string) error {
 	q := `DELETE FROM blacklists WHERE group_id = $1 AND type = $2 AND value = $3`
 	_, err := s.db.Exec(context.Background(), q, groupID, kind, value)
 	if err == nil {
-		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("blacklist:%d", groupID)).Build())
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key("blacklist:"+strconv.FormatInt(groupID, 10)).Build())
 	}
 	return err
 }
 
 func (s *Store) GetBlacklist(groupID int64) ([]BlacklistItem, error) {
-	cacheKey := fmt.Sprintf("blacklist:%d", groupID)
+	cacheKey := "blacklist:" + strconv.FormatInt(groupID, 10)
 	val, err := s.Valkey.Do(context.Background(), s.Valkey.B().Get().Key(cacheKey).Build()).AsBytes()
 	if err == nil {
 		var items []BlacklistItem
@@ -134,7 +133,7 @@ func (s *Store) GetBlacklist(groupID int64) ([]BlacklistItem, error) {
 	}
 	defer rows.Close()
 
-	var items []BlacklistItem
+	items := make([]BlacklistItem, 0)
 	for rows.Next() {
 		var i BlacklistItem
 		if err := rows.Scan(&i.ID, &i.GroupID, &i.Type, &i.Value, &i.Action, &i.ActionDuration, &i.CreatedAt); err != nil {
@@ -153,7 +152,7 @@ func (s *Store) AddApprovedUser(userID, groupID, createdBy int64) error {
 	q := `INSERT INTO approved_users (user_id, group_id, created_by) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`
 	_, err := s.db.Exec(context.Background(), q, userID, groupID, createdBy)
 	if err == nil {
-		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("approved:%d:%d", groupID, userID)).Build())
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key("approved:"+strconv.FormatInt(groupID, 10)+":"+strconv.FormatInt(userID, 10)).Build())
 	}
 	return err
 }
@@ -162,7 +161,7 @@ func (s *Store) RemoveApprovedUser(userID, groupID int64) error {
 	q := `DELETE FROM approved_users WHERE user_id = $1 AND group_id = $2`
 	_, err := s.db.Exec(context.Background(), q, userID, groupID)
 	if err == nil {
-		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("approved:%d:%d", groupID, userID)).Build())
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key("approved:"+strconv.FormatInt(groupID, 10)+":"+strconv.FormatInt(userID, 10)).Build())
 	}
 	return err
 }
@@ -195,7 +194,7 @@ func (s *Store) GetApprovedUsers(groupID int64) ([]int64, error) {
 	}
 	defer rows.Close()
 
-	var users []int64
+	users := make([]int64, 0)
 	for rows.Next() {
 		var uid int64
 		if err := rows.Scan(&uid); err != nil {
