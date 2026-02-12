@@ -82,6 +82,14 @@ func (b *Bot) RequestHandler(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
+	dedupKey := "dedup:" + strconv.FormatInt(update.UpdateID, 10)
+	isMember, err := b.Store.Valkey.Do(context.Background(), b.Store.Valkey.B().Get().Key(dedupKey).Build()).AsInt64()
+	if err == nil && isMember == 1 {
+		ctx.SetStatusCode(fasthttp.StatusOK)
+		return
+	}
+	b.Store.Valkey.Do(context.Background(), b.Store.Valkey.B().Set().Key(dedupKey).Value("1").Ex(time.Hour).Build())
+
 	c := b.contextPool.Get().(*Context)
 	c.Reset(b, &update)
 
@@ -215,6 +223,9 @@ func (b *Bot) IsAdmin(chat *Chat, user *User) bool {
 	}
 	req.SetBody(buf.Bytes())
 
+	if b.Client == nil {
+		return false
+	}
 	if err := b.Client.Do(req, resp); err != nil {
 		return false
 	}
