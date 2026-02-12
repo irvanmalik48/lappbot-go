@@ -153,6 +153,10 @@ func (m *Module) LoadApprovedUsers(groupID int64) error {
 
 func (m *Module) CheckBlacklist(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(c *bot.Context) error {
+		if c.Message == nil {
+			return next(c)
+		}
+
 		if m.Bot.IsAdmin(c.Chat(), c.Sender()) {
 			return next(c)
 		}

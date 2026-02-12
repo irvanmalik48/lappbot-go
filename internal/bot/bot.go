@@ -143,6 +143,12 @@ func (b *Bot) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *Bot) process(h HandlerFunc, ctx *Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Panic in handler: %v", r)
+		}
+	}()
+
 	final := h
 	for i := len(b.Middleware) - 1; i >= 0; i-- {
 		final = b.Middleware[i](final)
