@@ -84,7 +84,6 @@ func (b *Bot) RequestHandler(ctx *fasthttp.RequestCtx) {
 
 	c := b.contextPool.Get().(*Context)
 	c.Reset(b, &update)
-	defer b.contextPool.Put(c)
 
 	if update.Message != nil {
 		c.Message = update.Message
@@ -92,32 +91,36 @@ func (b *Bot) RequestHandler(ctx *fasthttp.RequestCtx) {
 		if len(update.Message.NewChatMembers) > 0 {
 			if h, ok := b.Handlers["new_chat_members"]; ok {
 				go b.process(h, c)
+			} else {
+				b.contextPool.Put(c)
 			}
-		}
-		if update.Message.LeftChatMember != nil {
+		} else if update.Message.LeftChatMember != nil {
 			if h, ok := b.Handlers["left_chat_member"]; ok {
 				go b.process(h, c)
+			} else {
+				b.contextPool.Put(c)
 			}
-		}
+		} else {
+			parts := strings.Fields(c.Message.Text)
+			if len(parts) > 0 {
+				c.Args = parts[1:]
+				cmd := parts[0]
+				if idx := strings.Index(cmd, "@"); idx != -1 {
+					cmd = cmd[:idx]
+				}
+				if h, ok := b.Handlers[cmd]; ok {
+					go b.process(h, c)
+					ctx.SetStatusCode(fasthttp.StatusOK)
+					return
+				}
+			}
 
-		parts := strings.Fields(c.Message.Text)
-		if len(parts) > 0 {
-			c.Args = parts[1:]
-			cmd := parts[0]
-			if idx := strings.Index(cmd, "@"); idx != -1 {
-				cmd = cmd[:idx]
-			}
-			if h, ok := b.Handlers[cmd]; ok {
+			if h, ok := b.Handlers["on_text"]; ok {
 				go b.process(h, c)
 				ctx.SetStatusCode(fasthttp.StatusOK)
 				return
 			}
-		}
-
-		if h, ok := b.Handlers["on_text"]; ok {
-			go b.process(h, c)
-			ctx.SetStatusCode(fasthttp.StatusOK)
-			return
+			b.contextPool.Put(c)
 		}
 
 	} else if update.CallbackQuery != nil {
@@ -129,6 +132,9 @@ func (b *Bot) RequestHandler(ctx *fasthttp.RequestCtx) {
 			ctx.SetStatusCode(fasthttp.StatusOK)
 			return
 		}
+		b.contextPool.Put(c)
+	} else {
+		b.contextPool.Put(c)
 	}
 
 	ctx.SetStatusCode(fasthttp.StatusOK)
@@ -139,6 +145,7 @@ func (b *Bot) process(h HandlerFunc, ctx *Context) {
 		if r := recover(); r != nil {
 			log.Error().Interface("panic", r).Msg("Panic in handler")
 		}
+		b.contextPool.Put(ctx)
 	}()
 
 	final := h
@@ -429,7 +436,6 @@ func (b *Bot) getUpdates(offset int64) ([]Update, error) {
 func (b *Bot) processUpdate(update *Update) {
 	ctx := b.contextPool.Get().(*Context)
 	ctx.Reset(b, update)
-	defer b.contextPool.Put(ctx)
 
 	if update.Message != nil {
 		ctx.Message = update.Message
@@ -437,30 +443,34 @@ func (b *Bot) processUpdate(update *Update) {
 		if len(update.Message.NewChatMembers) > 0 {
 			if h, ok := b.Handlers["new_chat_members"]; ok {
 				go b.process(h, ctx)
+			} else {
+				b.contextPool.Put(ctx)
 			}
-		}
-		if update.Message.LeftChatMember != nil {
+		} else if update.Message.LeftChatMember != nil {
 			if h, ok := b.Handlers["left_chat_member"]; ok {
 				go b.process(h, ctx)
+			} else {
+				b.contextPool.Put(ctx)
 			}
-		}
+		} else {
+			parts := strings.Fields(ctx.Message.Text)
+			if len(parts) > 0 {
+				ctx.Args = parts[1:]
+				cmd := parts[0]
+				if idx := strings.Index(cmd, "@"); idx != -1 {
+					cmd = cmd[:idx]
+				}
+				if h, ok := b.Handlers[cmd]; ok {
+					go b.process(h, ctx)
+					return
+				}
+			}
 
-		parts := strings.Fields(ctx.Message.Text)
-		if len(parts) > 0 {
-			ctx.Args = parts[1:]
-			cmd := parts[0]
-			if idx := strings.Index(cmd, "@"); idx != -1 {
-				cmd = cmd[:idx]
-			}
-			if h, ok := b.Handlers[cmd]; ok {
+			if h, ok := b.Handlers["on_text"]; ok {
 				go b.process(h, ctx)
 				return
 			}
-		}
-
-		if h, ok := b.Handlers["on_text"]; ok {
-			go b.process(h, ctx)
-			return
+			b.contextPool.Put(ctx)
 		}
 
 	} else if update.CallbackQuery != nil {
@@ -471,5 +481,8 @@ func (b *Bot) processUpdate(update *Update) {
 			go b.process(h, ctx)
 			return
 		}
+		b.contextPool.Put(ctx)
+	} else {
+		b.contextPool.Put(ctx)
 	}
 }
