@@ -45,7 +45,7 @@ func (m *Module) handleStart(c *bot.Context) error {
 }
 
 func (m *Module) handlePing(c *bot.Context) error {
-	latency := time.Duration(0)
+	latency := time.Since(time.Unix(c.Message.Date, 0)).Round(time.Millisecond)
 
 	storePings, err := m.Bot.Store.Ping()
 	if err != nil {
