@@ -82,7 +82,13 @@ func (b *Bot) RequestHandler(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	dedupKey := "dedup:" + strconv.FormatInt(update.UpdateID, 10)
+	buf := b.bufferPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	buf.WriteString("dedup:")
+	buf.WriteString(strconv.FormatInt(update.UpdateID, 10))
+	dedupKey := buf.String()
+	b.bufferPool.Put(buf)
+
 	isMember, err := b.Store.Valkey.Do(context.Background(), b.Store.Valkey.B().Get().Key(dedupKey).Build()).AsInt64()
 	if err == nil && isMember == 1 {
 		ctx.SetStatusCode(fasthttp.StatusOK)
@@ -109,13 +115,20 @@ func (b *Bot) RequestHandler(ctx *fasthttp.RequestCtx) {
 				b.contextPool.Put(c)
 			}
 		} else {
-			parts := strings.Fields(c.Message.Text)
-			if len(parts) > 0 {
-				c.Args = parts[1:]
-				cmd := parts[0]
-				if idx := strings.Index(cmd, "@"); idx != -1 {
+			text := c.Message.Text
+			if len(text) > 0 {
+				var cmd string
+				if idx := strings.IndexByte(text, ' '); idx != -1 {
+					cmd = text[:idx]
+					c.Args = strings.Fields(text[idx+1:])
+				} else {
+					cmd = text
+				}
+
+				if idx := strings.IndexByte(cmd, '@'); idx != -1 {
 					cmd = cmd[:idx]
 				}
+
 				if h, ok := b.Handlers[cmd]; ok {
 					go b.process(h, c)
 					ctx.SetStatusCode(fasthttp.StatusOK)

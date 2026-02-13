@@ -78,61 +78,58 @@ func (m *Module) onHelpCallback(c *bot.Context) error {
 	return c.Edit(text, markup, "Markdown")
 }
 
-func (m *Module) getHelpMenu(section string) (string, *bot.ReplyMarkup) {
-	markup := &bot.ReplyMarkup{}
-
-	var backBtn bot.InlineKeyboardButton
-	backBtn.Text = "« Back"
-	backBtn.CallbackData = "help_main"
-
-	var text string
-	switch section {
-	case "main":
-		markup.InlineKeyboard = [][]bot.InlineKeyboardButton{
-			{{Text: "Moderation", CallbackData: "help_mod"}, {Text: "Settings", CallbackData: "help_settings"}},
-			{{Text: "Filters", CallbackData: "help_filters"}, {Text: "Warnings", CallbackData: "help_warns"}, {Text: "Admin", CallbackData: "help_admin"}},
-			{{Text: "Realm", CallbackData: "help_realm"}, {Text: "Anti-Spam", CallbackData: "help_antispam"}, {Text: "Purges", CallbackData: "help_purges"}},
-			{{Text: "Notes", CallbackData: "help_notes"}, {Text: "Connection", CallbackData: "help_conn"}},
-			{{Text: "Topics", CallbackData: "help_topics"}, {Text: "Cursed", CallbackData: "help_cursed"}},
-		}
-		return "Welcome to Lappbot Help.\nSelect a category:", markup
-
-	case "cursed":
-		text = `**Cursed Commands:**
+var helpCache = map[string]struct {
+	Text   string
+	Markup *bot.ReplyMarkup
+}{
+	"main": {
+		Text: "Welcome to Lappbot Help.\nSelect a category:",
+		Markup: &bot.ReplyMarkup{
+			InlineKeyboard: [][]bot.InlineKeyboardButton{
+				{{Text: "Moderation", CallbackData: "help_mod"}, {Text: "Settings", CallbackData: "help_settings"}},
+				{{Text: "Filters", CallbackData: "help_filters"}, {Text: "Warnings", CallbackData: "help_warns"}, {Text: "Admin", CallbackData: "help_admin"}},
+				{{Text: "Realm", CallbackData: "help_realm"}, {Text: "Anti-Spam", CallbackData: "help_antispam"}, {Text: "Purges", CallbackData: "help_purges"}},
+				{{Text: "Notes", CallbackData: "help_notes"}, {Text: "Connection", CallbackData: "help_conn"}},
+				{{Text: "Topics", CallbackData: "help_topics"}, {Text: "Cursed", CallbackData: "help_cursed"}},
+			},
+		},
+	},
+	"cursed": {
+		Text: `**Cursed Commands:**
 /zalgo <text> - Zalgo text
 /uwuify <text> - UwU text
 /emojify <text> - Emojify text
-/leetify <text> - Leetify text`
-
-	case "topics":
-		text = `**Topic Commands:**
+/leetify <text> - Leetify text`,
+	},
+	"topics": {
+		Text: `**Topic Commands:**
 /actiontopic - Get action topic
 /setactiontopic - Set action topic
 /newtopic <name> - Create topic
 /renametopic <name> - Rename topic
 /closetopic - Close topic
 /reopentopic - Reopen topic
-/deletetopic - Delete topic`
-
-	case "notes":
-		text = `**Notes Commands:**
+/deletetopic - Delete topic`,
+	},
+	"notes": {
+		Text: `**Notes Commands:**
 /get <notename> - Get note
 #<notename> - Get note
 /save <notename> <content> - Save note
 /clear <notename> - Delete note
 /notes - List notes
 /clearall - Delete all notes
-/privatenotes - Toggle private mode`
-
-	case "conn":
-		text = `**Connection Commands:**
+/privatenotes - Toggle private mode`,
+	},
+	"conn": {
+		Text: `**Connection Commands:**
 /connect <chat> - Connect to Chat
 /disconnect - Disconnect
 /reconnect - Reconnect
-/connection - Check Connection`
-
-	case "mod":
-		text = `**Moderation Commands:**
+/connection - Check Connection`,
+	},
+	"mod": {
+		Text: `**Moderation Commands:**
 /kick - Kick (Reply)
 /ban [reason] - Ban (Reply)
 /tban <duration> [reason] - Timed Ban (Reply)
@@ -145,18 +142,18 @@ func (m *Module) getHelpMenu(section string) (string, *bot.ReplyMarkup) {
 /unmute - Unmute (Reply)
 /pin - Pin (Reply)
 /lock - Lock Group
-/unlock - Unlock Group`
-
-	case "purges":
-		text = `**Purge Commands:**
+/unlock - Unlock Group`,
+	},
+	"purges": {
+		Text: `**Purge Commands:**
 /purge [count] - Purge messages
 /spurge [count] - Silent purge
 /del - Delete message
 /purgefrom - Mark start
-/purgeto - Purge range`
-
-	case "warns":
-		text = `**Warning Commands:**
+/purgeto - Purge range`,
+	},
+	"warns": {
+		Text: `**Warning Commands:**
 /warn [reason] - Warn (Reply)
 /dwarn [reason] - Warn & Delete
 /swarn [reason] - Silent Warn
@@ -167,10 +164,10 @@ func (m *Module) getHelpMenu(section string) (string, *bot.ReplyMarkup) {
 /warnings - Check Settings
 /warnlimit <number> - Set Limit
 /warnmode <action> - Set Action
-/warntime <duration> - Set Duration`
-
-	case "antispam":
-		text = `**Anti-Raid:**
+/warntime <duration> - Set Duration`,
+	},
+	"antispam": {
+		Text: `**Anti-Raid:**
 /antiraid <time/off> - Toggle
 /raidtime <time> - Set duration
 /raidactiontime <time> - Ban duration
@@ -181,40 +178,55 @@ func (m *Module) getHelpMenu(section string) (string, *bot.ReplyMarkup) {
 /setflood <count> - Consecutive limit
 /setfloodtimer <count> <time> - Timed limit
 /floodmode <action> [time] - Action
-/clearflood <yes/no> - Delete flood`
-	case "settings":
-		text = `**Group Settings:**
+/clearflood <yes/no> - Delete flood`,
+	},
+	"settings": {
+		Text: `**Group Settings:**
 /welcome <on|off|text> [msg] - Welcome Msg
 /goodbye <on|off|text> [msg] - Goodbye Msg
 /captcha <on|off> - CAPTCHA
 
 **Placeholders:**
-{firstname}, {username}, {userid}`
-	case "filters":
-		text = `**Filter Commands:**
+{firstname}, {username}, {userid}`,
+	},
+	"filters": {
+		Text: `**Filter Commands:**
 /filter <trigger> <response> - Add filter (reply)
 /stop <trigger> - Remove filter
-/filters - List filters`
-	case "admin":
-		text = `**Admin Commands:**
+/filters - List filters`,
+	},
+	"admin": {
+		Text: `**Admin Commands:**
 /promote [title] - Promote
 /demote - Demote
 /approve - Exempt User
 /unapprove - Revoke Exemption
 /bl <type> <value> [action] - Blacklist
 /unbl <type> <value> - Unblacklist
-/blacklist - List Rules`
-	case "realm":
-		text = `**Realm Commands:**
+/blacklist - List Rules`,
+	},
+	"realm": {
+		Text: `**Realm Commands:**
 /rban [reason] - Realm Ban (Reply)
 /rmute [reason] - Realm Mute (Reply)
-(Bot Owner Only)`
-	}
+(Bot Owner Only)`,
+	},
+}
 
-	markup.InlineKeyboard = [][]bot.InlineKeyboardButton{
-		{backBtn},
+var backMarkup = &bot.ReplyMarkup{
+	InlineKeyboard: [][]bot.InlineKeyboardButton{
+		{{Text: "« Back", CallbackData: "help_main"}},
+	},
+}
+
+func (m *Module) getHelpMenu(section string) (string, *bot.ReplyMarkup) {
+	if data, ok := helpCache[section]; ok {
+		if data.Markup != nil {
+			return data.Text, data.Markup
+		}
+		return data.Text, backMarkup
 	}
-	return text, markup
+	return "Help section not found.", backMarkup
 }
 
 func (m *Module) handleReport(c *bot.Context) error {
