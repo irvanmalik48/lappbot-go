@@ -30,6 +30,10 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to initialize store")
 	}
 
+	if err := store.RunMigrations(cfg); err != nil {
+		log.Fatal().Err(err).Msg("failed to run migrations")
+	}
+
 	b, err := bot.New(cfg, st)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create bot")

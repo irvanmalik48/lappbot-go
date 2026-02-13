@@ -1,9 +1,7 @@
 package store
 
 import (
-	"errors"
 	"fmt"
-
 	"lappbot/internal/config"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -21,10 +19,10 @@ func RunMigrations(cfg *config.Config) error {
 		return fmt.Errorf("failed to create migration instance: %w", err)
 	}
 
-	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return fmt.Errorf("failed to run up migrations: %w", err)
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	log.Info().Msg("Migrations completed successfully")
+	log.Info().Msg("Database migrations applied successfully")
 	return nil
 }
