@@ -128,9 +128,18 @@ type ChatMember struct {
 	Role   string `json:"custom_title,omitempty"`
 }
 
-const (
-	ChatPrivate    = "private"
-	ChatGroup      = "group"
-	ChatSuperGroup = "supergroup"
-	ChatChannel    = "channel"
-)
+type SendMessageReq struct {
+	ChatID           int64        `json:"chat_id"`
+	Text             string       `json:"text"`
+	ParseMode        string       `json:"parse_mode,omitempty"`
+	ReplyToMessageID int64        `json:"reply_to_message_id,omitempty"`
+	ReplyMarkup      *ReplyMarkup `json:"reply_markup,omitempty"`
+}
+
+type EditMessageTextReq struct {
+	ChatID      int64        `json:"chat_id"`
+	MessageID   int64        `json:"message_id"`
+	Text        string       `json:"text"`
+	ParseMode   string       `json:"parse_mode,omitempty"`
+	ReplyMarkup *ReplyMarkup `json:"reply_markup,omitempty"`
+}

@@ -10,9 +10,14 @@ import (
 	"sync"
 )
 
+type CachedRegex struct {
+	Re   *regexp.Regexp
+	Item store.BlacklistItem
+}
+
 type BlacklistCache struct {
 	sync.RWMutex
-	Regexes       map[int64][]*regexp.Regexp
+	Regexes       map[int64][]CachedRegex
 	StickerSets   map[int64]map[string]store.BlacklistItem
 	Emojis        map[int64]map[string]store.BlacklistItem
 	ApprovedUsers map[int64]map[int64]struct{}
@@ -29,7 +34,7 @@ func New(b *bot.Bot, s *store.Store) *Module {
 		Bot:   b,
 		Store: s,
 		BlacklistCache: &BlacklistCache{
-			Regexes:       make(map[int64][]*regexp.Regexp),
+			Regexes:       make(map[int64][]CachedRegex),
 			StickerSets:   make(map[int64]map[string]store.BlacklistItem),
 			Emojis:        make(map[int64]map[string]store.BlacklistItem),
 			ApprovedUsers: make(map[int64]map[int64]struct{}),
@@ -96,7 +101,7 @@ func (m *Module) handleRefreshCache(c *bot.Context) error {
 	}
 
 	m.BlacklistCache.Lock()
-	m.BlacklistCache.Regexes = make(map[int64][]*regexp.Regexp)
+	m.BlacklistCache.Regexes = make(map[int64][]CachedRegex)
 	m.BlacklistCache.StickerSets = make(map[int64]map[string]store.BlacklistItem)
 	m.BlacklistCache.Emojis = make(map[int64]map[string]store.BlacklistItem)
 	m.BlacklistCache.ApprovedUsers = make(map[int64]map[int64]struct{})

@@ -17,17 +17,17 @@ func (c *Context) Reset(b *Bot, u *Update) {
 }
 
 func (c *Context) Send(text string, opts ...any) error {
-	req := map[string]any{
-		"chat_id": c.Chat().ID,
-		"text":    text,
+	req := SendMessageReq{
+		ChatID: c.Chat().ID,
+		Text:   text,
 	}
 
 	for _, opt := range opts {
 		switch v := opt.(type) {
 		case string:
-			req["parse_mode"] = v
+			req.ParseMode = v
 		case *ReplyMarkup:
-			req["reply_markup"] = v
+			req.ReplyMarkup = v
 		}
 	}
 
@@ -35,17 +35,17 @@ func (c *Context) Send(text string, opts ...any) error {
 }
 
 func (c *Context) Reply(text string, opts ...any) error {
-	req := map[string]any{
-		"chat_id":             c.Chat().ID,
-		"text":                text,
-		"reply_to_message_id": c.Message.ID,
+	req := SendMessageReq{
+		ChatID:           c.Chat().ID,
+		Text:             text,
+		ReplyToMessageID: c.Message.ID,
 	}
 	for _, opt := range opts {
 		switch v := opt.(type) {
 		case string:
-			req["parse_mode"] = v
+			req.ParseMode = v
 		case *ReplyMarkup:
-			req["reply_markup"] = v
+			req.ReplyMarkup = v
 		}
 	}
 	return c.Bot.Raw("sendMessage", req)
@@ -62,17 +62,17 @@ func (c *Context) Delete() error {
 
 func (c *Context) Edit(text string, opts ...any) error {
 	if c.Callback != nil && c.Callback.Message != nil {
-		req := map[string]any{
-			"chat_id":    c.Callback.Message.Chat.ID,
-			"message_id": c.Callback.Message.ID,
-			"text":       text,
+		req := EditMessageTextReq{
+			ChatID:    c.Callback.Message.Chat.ID,
+			MessageID: c.Callback.Message.ID,
+			Text:      text,
 		}
 		for _, opt := range opts {
 			switch v := opt.(type) {
 			case string:
-				req["parse_mode"] = v
+				req.ParseMode = v
 			case *ReplyMarkup:
-				req["reply_markup"] = v
+				req.ReplyMarkup = v
 			}
 		}
 		return c.Bot.Raw("editMessageText", req)

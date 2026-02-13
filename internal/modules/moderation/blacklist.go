@@ -108,7 +108,7 @@ func (m *Module) LoadBlacklistCache(groupID int64) error {
 	m.BlacklistCache.Lock()
 	defer m.BlacklistCache.Unlock()
 
-	var regexes []*regexp.Regexp
+	var regexes []CachedRegex
 	stickers := make(map[string]store.BlacklistItem, len(items))
 	emojis := make(map[string]store.BlacklistItem, len(items))
 
@@ -117,7 +117,7 @@ func (m *Module) LoadBlacklistCache(groupID int64) error {
 		case "regex":
 			re, err := regexp.Compile(item.Value)
 			if err == nil {
-				regexes = append(regexes, re)
+				regexes = append(regexes, CachedRegex{Re: re, Item: item})
 			}
 		case "sticker_set":
 			stickers[item.Value] = item
@@ -204,13 +204,8 @@ func (m *Module) CheckBlacklist(next bot.HandlerFunc) bot.HandlerFunc {
 		caption := c.Message.Caption
 
 		for _, re := range regexes {
-			if re.MatchString(text) || (caption != "" && re.MatchString(caption)) {
-				items, _ := m.Store.GetBlacklist(c.Chat().ID)
-				for _, item := range items {
-					if item.Type == "regex" && item.Value == re.String() {
-						return m.executeBlacklistAction(c, item)
-					}
-				}
+			if re.Re.MatchString(text) || (caption != "" && re.Re.MatchString(caption)) {
+				return m.executeBlacklistAction(c, re.Item)
 			}
 		}
 

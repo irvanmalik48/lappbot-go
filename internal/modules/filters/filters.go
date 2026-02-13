@@ -4,18 +4,31 @@ import (
 	"fmt"
 	"html"
 	"strings"
+	"sync"
 
 	"lappbot/internal/bot"
 	"lappbot/internal/store"
 )
 
+type FiltersCache struct {
+	sync.RWMutex
+	Filters map[int64][]store.Filter
+}
+
 type FiltersModule struct {
 	Bot   *bot.Bot
 	Store *store.Store
+	Cache *FiltersCache
 }
 
 func New(b *bot.Bot, s *store.Store) *FiltersModule {
-	return &FiltersModule{Bot: b, Store: s}
+	return &FiltersModule{
+		Bot:   b,
+		Store: s,
+		Cache: &FiltersCache{
+			Filters: make(map[int64][]store.Filter),
+		},
+	}
 }
 
 func (m *FiltersModule) Register() {
@@ -60,6 +73,10 @@ func (m *FiltersModule) handleFilter(c *bot.Context) error {
 		return c.Send("Failed to save filter: " + err.Error())
 	}
 
+	m.Cache.Lock()
+	delete(m.Cache.Filters, target.ID)
+	m.Cache.Unlock()
+
 	return c.Send(fmt.Sprintf("Filter saved!\nTrigger: %s\nResponse: %s", trigger, response))
 }
 
@@ -82,6 +99,10 @@ func (m *FiltersModule) handleStop(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Failed to delete filter: " + err.Error())
 	}
+
+	m.Cache.Lock()
+	delete(m.Cache.Filters, target.ID)
+	m.Cache.Unlock()
 
 	return c.Send(fmt.Sprintf("Filter '%s' deleted.", trigger))
 }
@@ -119,9 +140,19 @@ func (m *FiltersModule) handleText(c *bot.Context) error {
 		return nil
 	}
 
-	filters, err := m.Store.GetFilters(target.ID)
-	if err != nil {
-		return nil
+	m.Cache.RLock()
+	filters, ok := m.Cache.Filters[target.ID]
+	m.Cache.RUnlock()
+
+	if !ok {
+		var err error
+		filters, err = m.Store.GetFilters(target.ID)
+		if err != nil {
+			return nil
+		}
+		m.Cache.Lock()
+		m.Cache.Filters[target.ID] = filters
+		m.Cache.Unlock()
 	}
 
 	lowerText := strings.ToLower(text)
