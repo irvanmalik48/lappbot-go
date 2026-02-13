@@ -17,34 +17,35 @@ type Filter struct {
 	GroupID   int64
 	Trigger   string
 	Response  string
+	Type      string
 	CreatedAt any
 }
 
-func (s *Store) AddFilter(groupID int64, trigger, response string) error {
+func (s *Store) AddFilter(groupID int64, trigger, response, kind string) error {
 	id, err := gonanoid.New()
 	if err != nil {
 		return err
 	}
-	q := `INSERT INTO filters (id, group_id, trigger, response) VALUES ($1, $2, $3, $4)
-	      ON CONFLICT (group_id, trigger) DO UPDATE SET response = $4`
-	_, err = s.db.Exec(context.Background(), q, id, groupID, trigger, response)
+	q := `INSERT INTO filters (id, group_id, trigger, response, type) VALUES ($1, $2, $3, $4, $5)
+	      ON CONFLICT (group_id, trigger) DO UPDATE SET response = $4, type = $5`
+	_, err = s.db.Exec(context.Background(), q, id, groupID, trigger, response, kind)
 	if err == nil {
 		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key("filters:"+strconv.FormatInt(groupID, 10)).Build())
 	}
 	return err
 }
 
-func (s *Store) GetFilter(groupID int64, trigger string) (string, error) {
-	q := `SELECT response FROM filters WHERE group_id = $1 AND trigger = $2`
-	var response string
-	err := s.db.QueryRow(context.Background(), q, groupID, trigger).Scan(&response)
+func (s *Store) GetFilter(groupID int64, trigger string) (string, string, error) {
+	q := `SELECT response, type FROM filters WHERE group_id = $1 AND trigger = $2`
+	var response, kind string
+	err := s.db.QueryRow(context.Background(), q, groupID, trigger).Scan(&response, &kind)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", nil
+			return "", "", nil
 		}
-		return "", err
+		return "", "", err
 	}
-	return response, nil
+	return response, kind, nil
 }
 
 func (s *Store) GetFilters(groupID int64) ([]Filter, error) {
@@ -57,7 +58,7 @@ func (s *Store) GetFilters(groupID int64) ([]Filter, error) {
 		}
 	}
 
-	q := `SELECT id, trigger, response FROM filters WHERE group_id = $1 ORDER BY trigger ASC`
+	q := `SELECT id, trigger, response, type FROM filters WHERE group_id = $1 ORDER BY trigger ASC`
 	rows, err := s.db.Query(context.Background(), q, groupID)
 	if err != nil {
 		return nil, err
@@ -67,7 +68,7 @@ func (s *Store) GetFilters(groupID int64) ([]Filter, error) {
 	filters := make([]Filter, 0)
 	for rows.Next() {
 		var f Filter
-		if err := rows.Scan(&f.ID, &f.Trigger, &f.Response); err != nil {
+		if err := rows.Scan(&f.ID, &f.Trigger, &f.Response, &f.Type); err != nil {
 			continue
 		}
 		filters = append(filters, f)

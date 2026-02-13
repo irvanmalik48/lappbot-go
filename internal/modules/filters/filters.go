@@ -53,22 +53,51 @@ func (m *FiltersModule) handleFilter(c *bot.Context) error {
 	}
 
 	trigger := strings.ToLower(args[0])
-	var response string
+	var response, kind string
 
 	if c.Message.ReplyTo != nil {
-		response = c.Message.ReplyTo.Text
-		if response == "" {
-			response = c.Message.ReplyTo.Caption
+		msg := c.Message.ReplyTo
+		if msg.Sticker != nil {
+			kind = "sticker"
+			response = msg.Sticker.FileID
+		} else if len(msg.Photo) > 0 {
+			kind = "photo"
+			response = msg.Photo[len(msg.Photo)-1].FileID
+		} else if msg.Video != nil {
+			kind = "video"
+			response = msg.Video.FileID
+		} else if msg.Voice != nil {
+			kind = "voice"
+			response = msg.Voice.FileID
+		} else if msg.Audio != nil {
+			kind = "audio"
+			response = msg.Audio.FileID
+		} else if msg.Document != nil {
+			kind = "document"
+			response = msg.Document.FileID
+		} else if msg.VideoNote != nil {
+			kind = "video_note"
+			response = msg.VideoNote.FileID
+		} else if msg.Animation != nil {
+			kind = "animation"
+			response = msg.Animation.FileID
+		} else {
+			kind = "text"
+			response = msg.Text
+			if response == "" {
+				response = msg.Caption
+			}
 		}
 	} else if len(args) >= 2 {
+		kind = "text"
 		response = strings.Join(args[1:], " ")
 	}
 
 	if response == "" {
-		return c.Send("Please provide a response text or reply to a text message.")
+		return c.Send("Please provide a response text or reply to a message.")
 	}
 
-	err = m.Store.AddFilter(target.ID, trigger, response)
+	err = m.Store.AddFilter(target.ID, trigger, response, kind)
 	if err != nil {
 		return c.Send("Failed to save filter: " + err.Error())
 	}
@@ -77,7 +106,7 @@ func (m *FiltersModule) handleFilter(c *bot.Context) error {
 	delete(m.Cache.Filters, target.ID)
 	m.Cache.Unlock()
 
-	return c.Send(fmt.Sprintf("Filter saved!\nTrigger: %s\nResponse: %s", trigger, response))
+	return c.Send(fmt.Sprintf("Filter saved!\nTrigger: %s\nType: %s", trigger, kind))
 }
 
 func (m *FiltersModule) handleStop(c *bot.Context) error {
@@ -159,7 +188,26 @@ func (m *FiltersModule) handleText(c *bot.Context) error {
 
 	for _, f := range filters {
 		if strings.Contains(lowerText, strings.ToLower(f.Trigger)) {
-			return c.Send(f.Response, "Markdown")
+			switch f.Type {
+			case "sticker":
+				return m.Bot.Raw("sendSticker", map[string]any{"chat_id": c.Chat().ID, "sticker": f.Response})
+			case "photo":
+				return m.Bot.Raw("sendPhoto", map[string]any{"chat_id": c.Chat().ID, "photo": f.Response})
+			case "video":
+				return m.Bot.Raw("sendVideo", map[string]any{"chat_id": c.Chat().ID, "video": f.Response})
+			case "voice":
+				return m.Bot.Raw("sendVoice", map[string]any{"chat_id": c.Chat().ID, "voice": f.Response})
+			case "audio":
+				return m.Bot.Raw("sendAudio", map[string]any{"chat_id": c.Chat().ID, "audio": f.Response})
+			case "document":
+				return m.Bot.Raw("sendDocument", map[string]any{"chat_id": c.Chat().ID, "document": f.Response})
+			case "video_note":
+				return m.Bot.Raw("sendVideoNote", map[string]any{"chat_id": c.Chat().ID, "video_note": f.Response})
+			case "animation":
+				return m.Bot.Raw("sendAnimation", map[string]any{"chat_id": c.Chat().ID, "animation": f.Response})
+			default:
+				return c.Send(f.Response, "Markdown")
+			}
 		}
 	}
 

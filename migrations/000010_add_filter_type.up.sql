@@ -1,0 +1,1 @@
+ALTER TABLE filters ADD COLUMN type VARCHAR(50) DEFAULT 'text';

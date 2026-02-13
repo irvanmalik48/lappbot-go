@@ -1,0 +1,1 @@
+ALTER TABLE filters DROP COLUMN type;
