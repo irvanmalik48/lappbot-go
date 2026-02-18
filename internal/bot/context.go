@@ -35,10 +35,17 @@ func (c *Context) Send(text string, opts ...any) error {
 }
 
 func (c *Context) Reply(text string, opts ...any) error {
+	var replyTo int64
+	if c.Message != nil {
+		replyTo = c.Message.ID
+	} else if c.Callback != nil && c.Callback.Message != nil {
+		replyTo = c.Callback.Message.ID
+	}
+
 	req := SendMessageReq{
 		ChatID:           c.Chat().ID,
 		Text:             text,
-		ReplyToMessageID: c.Message.ID,
+		ReplyToMessageID: replyTo,
 	}
 	for _, opt := range opts {
 		switch v := opt.(type) {
@@ -52,8 +59,19 @@ func (c *Context) Reply(text string, opts ...any) error {
 }
 
 func (c *Context) Delete() error {
-	msgID := c.Message.ID
-	chatID := c.Chat().ID
+	var msgID int64
+	var chatID int64
+
+	if c.Message != nil {
+		msgID = c.Message.ID
+		chatID = c.Message.Chat.ID
+	} else if c.Callback != nil && c.Callback.Message != nil {
+		msgID = c.Callback.Message.ID
+		chatID = c.Callback.Message.Chat.ID
+	} else {
+		return nil
+	}
+
 	return c.Bot.Raw("deleteMessage", map[string]any{
 		"chat_id":    chatID,
 		"message_id": msgID,
