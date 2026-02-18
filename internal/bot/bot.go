@@ -30,6 +30,7 @@ type Bot struct {
 	Middleware  []func(HandlerFunc) HandlerFunc
 	bufferPool  sync.Pool
 	contextPool sync.Pool
+	Me          *User
 }
 
 func New(cfg *config.Config, store *store.Store) (*Bot, error) {
@@ -60,6 +61,33 @@ func New(cfg *config.Config, store *store.Store) (*Bot, error) {
 			},
 		},
 	}, nil
+}
+
+func (b *Bot) GetMe() (*User, error) {
+	req := fasthttp.AcquireRequest()
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(resp)
+
+	req.Header.SetMethod(fasthttp.MethodPost)
+	req.Header.SetContentType("application/json")
+	req.SetRequestURI(b.APIURL + "/bot" + b.Token + "/getMe")
+
+	if err := b.Client.Do(req, resp); err != nil {
+		return nil, err
+	}
+
+	var res struct {
+		Ok     bool `json:"ok"`
+		Result User `json:"result"`
+	}
+	if err := json.Unmarshal(resp.Body(), &res); err != nil {
+		return nil, err
+	}
+	if !res.Ok {
+		return nil, fmt.Errorf("ok=false")
+	}
+	return &res.Result, nil
 }
 
 func (b *Bot) Handle(endpoint string, h HandlerFunc) {
@@ -327,6 +355,14 @@ func (b *Bot) StartLongPolling() {
 		log.Error().Err(err).Msg("Failed to delete webhook before long polling")
 	}
 	log.Info().Msg("Bot started in Long Polling mode")
+
+	me, err := b.GetMe()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to get bot info")
+	}
+	b.Me = me
+	log.Info().Msgf("Bot started as %s (@%s)", b.Me.FirstName, b.Me.Username)
+
 	var offset int64 = 0
 	for {
 		updates, err := b.getUpdates(offset)
@@ -350,6 +386,14 @@ func (b *Bot) StartWebhook() {
 	if err := b.SetWebhook(b.Cfg.WebhookURL + b.Cfg.WebhookPath); err != nil {
 		log.Fatal().Err(err).Msg("Failed to set webhook")
 	}
+
+	me, err := b.GetMe()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to get bot info")
+	}
+	b.Me = me
+	log.Info().Msgf("Bot started as %s (@%s)", b.Me.FirstName, b.Me.Username)
+
 	log.Info().Msgf("Bot started in Webhook mode on port %d", b.Cfg.WebhookPort)
 
 	requestHandler := func(ctx *fasthttp.RequestCtx) {
@@ -491,6 +535,11 @@ func (b *Bot) processUpdate(update *Update) {
 				ctx.Args = parts[1:]
 				cmd := parts[0]
 				if idx := strings.Index(cmd, "@"); idx != -1 {
+					targetBot := cmd[idx+1:]
+					if !strings.EqualFold(targetBot, b.Me.Username) {
+						b.contextPool.Put(ctx)
+						return
+					}
 					cmd = cmd[:idx]
 				}
 				if h, ok := b.Handlers[cmd]; ok {
