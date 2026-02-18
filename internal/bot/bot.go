@@ -124,76 +124,7 @@ func (b *Bot) RequestHandler(ctx *fasthttp.RequestCtx) {
 	}
 	b.Store.Valkey.Do(context.Background(), b.Store.Valkey.B().Set().Key(dedupKey).Value("1").Ex(time.Hour).Build())
 
-	c := b.contextPool.Get().(*Context)
-	c.Reset(b, &update)
-
-	if update.Message != nil {
-		c.Message = update.Message
-
-		if len(update.Message.NewChatMembers) > 0 {
-			if h, ok := b.Handlers["new_chat_members"]; ok {
-				go b.process(h, c)
-			} else {
-				b.contextPool.Put(c)
-			}
-		} else if update.Message.LeftChatMember != nil {
-			if h, ok := b.Handlers["left_chat_member"]; ok {
-				go b.process(h, c)
-			} else {
-				b.contextPool.Put(c)
-			}
-		} else {
-			text := c.Message.Text
-			if len(text) > 0 {
-				var cmd string
-				if idx := strings.IndexByte(text, ' '); idx != -1 {
-					cmd = text[:idx]
-					c.Args = strings.Fields(text[idx+1:])
-				} else {
-					cmd = text
-				}
-
-				if idx := strings.IndexByte(cmd, '@'); idx != -1 {
-					cmd = cmd[:idx]
-				}
-
-				if h, ok := b.Handlers[cmd]; ok {
-					go b.process(h, c)
-					ctx.SetStatusCode(fasthttp.StatusOK)
-					return
-				}
-			}
-
-			if h, ok := b.Handlers["on_text"]; ok {
-				go b.process(h, c)
-				ctx.SetStatusCode(fasthttp.StatusOK)
-				return
-			}
-			b.contextPool.Put(c)
-		}
-
-	} else if update.CallbackQuery != nil {
-		c.Callback = update.CallbackQuery
-		data := c.Callback.Data
-
-		if h, ok := b.Handlers[data]; ok {
-			go b.process(h, c)
-			ctx.SetStatusCode(fasthttp.StatusOK)
-			return
-		}
-
-		if idx := strings.Index(data, "|"); idx != -1 {
-			if h, ok := b.Handlers[data[:idx]]; ok {
-				go b.process(h, c)
-				ctx.SetStatusCode(fasthttp.StatusOK)
-				return
-			}
-		}
-
-		b.contextPool.Put(c)
-	} else {
-		b.contextPool.Put(c)
-	}
+	b.processUpdate(&update)
 
 	ctx.SetStatusCode(fasthttp.StatusOK)
 }

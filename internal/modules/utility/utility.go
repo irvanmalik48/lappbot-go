@@ -57,7 +57,10 @@ func (m *Module) handlePingRefresh(c *bot.Context) error {
 
 func (m *Module) buildPingMessage() (string, *bot.ReplyMarkup) {
 	start := time.Now()
-	m.Bot.GetMe()
+	_, err := m.Bot.GetMe()
+	if err != nil {
+		return "Ping failed: " + err.Error(), nil
+	}
 	rtt := time.Since(start)
 
 	msg := "Ping: `" + strconv.FormatInt(rtt.Milliseconds(), 10) + "ms`"
