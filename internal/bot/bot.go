@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -132,7 +133,7 @@ func (b *Bot) RequestHandler(ctx *fasthttp.RequestCtx) {
 func (b *Bot) process(h HandlerFunc, ctx *Context) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Error().Interface("panic", r).Msg("Panic in handler")
+			log.Error().Interface("panic", r).Bytes("stack", debug.Stack()).Msg("Panic in handler")
 		}
 		b.contextPool.Put(ctx)
 	}()

@@ -114,20 +114,20 @@ func (c *Context) Respond(opts ...any) error {
 }
 
 func (c *Context) Chat() *Chat {
-	if c.Message != nil {
+	if c.Message != nil && c.Message.Chat != nil {
 		return c.Message.Chat
 	}
-	if c.Callback != nil && c.Callback.Message != nil {
+	if c.Callback != nil && c.Callback.Message != nil && c.Callback.Message.Chat != nil {
 		return c.Callback.Message.Chat
 	}
 	return &Chat{}
 }
 
 func (c *Context) Sender() *User {
-	if c.Callback != nil {
+	if c.Callback != nil && c.Callback.From != nil {
 		return c.Callback.From
 	}
-	if c.Message != nil {
+	if c.Message != nil && c.Message.From != nil {
 		return c.Message.From
 	}
 	return &User{}
