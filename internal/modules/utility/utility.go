@@ -45,18 +45,28 @@ func (m *Module) handleStart(c *bot.Context) error {
 }
 
 func (m *Module) handlePing(c *bot.Context) error {
-	netLatency := time.Since(time.Unix(c.Message.Date, 0)).Milliseconds()
-	msgStr, markup := m.buildPingMessage(netLatency)
+	netLatency := time.Since(time.Unix(c.Message.Date, 0))
+	nextTimestamp := time.Now().UnixNano()
+	msgStr, markup := m.buildPingMessage(netLatency, nextTimestamp)
 	return c.Send(msgStr, markup, "Markdown")
 }
 
 func (m *Module) handlePingRefresh(c *bot.Context) error {
-	msgStr, markup := m.buildPingMessage(0)
+	data := strings.TrimPrefix(c.Data(), "btn_refresh_ping|")
+	prevTimestamp, _ := strconv.ParseInt(data, 10, 64)
+
+	var netLatency time.Duration
+	if prevTimestamp > 0 {
+		netLatency = time.Since(time.Unix(0, prevTimestamp))
+	}
+	nextTimestamp := time.Now().UnixNano()
+
+	msgStr, markup := m.buildPingMessage(netLatency, nextTimestamp)
 	c.Respond("Refreshed")
 	return c.Edit(msgStr, markup, "Markdown")
 }
 
-func (m *Module) buildPingMessage(netLatency int64) (string, *bot.ReplyMarkup) {
+func (m *Module) buildPingMessage(netLatency time.Duration, nextTimestamp int64) (string, *bot.ReplyMarkup) {
 	start := time.Now()
 	_, err := m.Bot.GetMe()
 	if err != nil {
@@ -64,12 +74,14 @@ func (m *Module) buildPingMessage(netLatency int64) (string, *bot.ReplyMarkup) {
 	}
 	rtt := time.Since(start)
 
-	msg := "Ping: `" + strconv.FormatInt(rtt.Milliseconds(), 10) + "ms`"
-	msg += "\nNetwork: `" + strconv.FormatInt(netLatency, 10) + "ms`"
+	msg := "Ping: `" + rtt.String() + "`"
+	if netLatency > 0 {
+		msg += "\nNetwork: `" + netLatency.String() + "`"
+	}
 
 	markup := &bot.ReplyMarkup{}
 	markup.InlineKeyboard = [][]bot.InlineKeyboardButton{
-		{{Text: "Refresh", CallbackData: "btn_refresh_ping"}},
+		{{Text: "Refresh", CallbackData: "btn_refresh_ping|" + strconv.FormatInt(nextTimestamp, 10)}},
 	}
 
 	return msg, markup
