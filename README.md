@@ -20,6 +20,7 @@ Whatever Rose has, Lappbot is trying to reimplement it, so yeah.
 3.  Copy `.env.example` to `.env` (or create it) and fill in your details.
     - **Note**: For Local Bot API, ensure you provide `TELEGRAM_API_ID` and `TELEGRAM_API_HASH`.
     - Set `BOT_API_URL` correctly (e.g., `http://127.0.0.1:8081` or whatever port you configured).
+    - **Long Polling**: To use Long Polling (default), ensure `WEBHOOK_URL` is empty. The bot will automatically delete any existing webhook on startup.
 
 4.  The bot handles migrations automatically on startup using `golang-migrate`.
 
