@@ -45,17 +45,17 @@ func (m *Module) handleStart(c *bot.Context) error {
 }
 
 func (m *Module) handlePing(c *bot.Context) error {
-	msgStr, markup := m.buildPingMessage()
+	msgStr, markup := m.buildPingMessage(c.Message.Date)
 	return c.Send(msgStr, markup, "Markdown")
 }
 
 func (m *Module) handlePingRefresh(c *bot.Context) error {
-	msgStr, markup := m.buildPingMessage()
+	msgStr, markup := m.buildPingMessage(0)
 	c.Respond("Refreshed")
 	return c.Edit(msgStr, markup, "Markdown")
 }
 
-func (m *Module) buildPingMessage() (string, *bot.ReplyMarkup) {
+func (m *Module) buildPingMessage(msgDate int64) (string, *bot.ReplyMarkup) {
 	start := time.Now()
 	_, err := m.Bot.GetMe()
 	if err != nil {
@@ -64,6 +64,10 @@ func (m *Module) buildPingMessage() (string, *bot.ReplyMarkup) {
 	rtt := time.Since(start)
 
 	msg := "Ping: `" + strconv.FormatInt(rtt.Milliseconds(), 10) + "ms`"
+	if msgDate > 0 {
+		netRtt := time.Since(time.Unix(msgDate, 0))
+		msg += "\nNetwork: `" + strconv.FormatInt(netRtt.Milliseconds(), 10) + "ms`"
+	}
 
 	markup := &bot.ReplyMarkup{}
 	markup.InlineKeyboard = [][]bot.InlineKeyboardButton{
