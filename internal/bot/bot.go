@@ -536,7 +536,7 @@ func (b *Bot) processUpdate(update *Update) {
 				cmd := parts[0]
 				if idx := strings.Index(cmd, "@"); idx != -1 {
 					targetBot := cmd[idx+1:]
-					if !strings.EqualFold(targetBot, b.Me.Username) {
+					if b.Me != nil && !strings.EqualFold(targetBot, b.Me.Username) {
 						b.contextPool.Put(ctx)
 						return
 					}

@@ -1,7 +1,6 @@
 package utility
 
 import (
-	"fmt"
 	"lappbot/internal/bot"
 	"lappbot/internal/config"
 	"runtime"
@@ -42,39 +41,26 @@ func (m *Module) Register() {
 }
 
 func (m *Module) handleStart(c *bot.Context) error {
-	return c.Send(fmt.Sprintf("Hello! I am %s. Use /help to see what I can do.", m.Cfg.BotName))
+	return c.Send("Hello! I am " + m.Cfg.BotName + ". Use /help to see what I can do.")
 }
 
 func (m *Module) handlePing(c *bot.Context) error {
-	msgStr, markup := m.buildPingMessage(c.Message.Date)
+	msgStr, markup := m.buildPingMessage()
 	return c.Send(msgStr, markup, "Markdown")
 }
 
 func (m *Module) handlePingRefresh(c *bot.Context) error {
-	msgStr, markup := m.buildPingMessage(0)
+	msgStr, markup := m.buildPingMessage()
 	c.Respond("Refreshed")
 	return c.Edit(msgStr, markup, "Markdown")
 }
 
-func (m *Module) buildPingMessage(msgDate int64) (string, *bot.ReplyMarkup) {
+func (m *Module) buildPingMessage() (string, *bot.ReplyMarkup) {
 	start := time.Now()
-	m.Bot.Raw("getMe", nil)
-	network := time.Since(start)
+	m.Bot.GetMe()
+	rtt := time.Since(start)
 
-	var overall time.Duration
-	if msgDate > 0 {
-		overall = time.Since(time.Unix(msgDate, 0))
-	} else {
-		overall = network
-	}
-
-	system := overall - network
-	if system < 0 {
-		system = 0
-	}
-
-	msg := fmt.Sprintf("System: `%dms`\nNetwork: `%dms`\nOverall: `%dms`",
-		system.Milliseconds(), network.Milliseconds(), overall.Milliseconds())
+	msg := "Ping: `" + strconv.FormatInt(rtt.Milliseconds(), 10) + "ms`"
 
 	markup := &bot.ReplyMarkup{}
 	markup.InlineKeyboard = [][]bot.InlineKeyboardButton{
@@ -85,7 +71,8 @@ func (m *Module) buildPingMessage(msgDate int64) (string, *bot.ReplyMarkup) {
 }
 
 func (m *Module) handleVersion(c *bot.Context) error {
-	return c.Send(fmt.Sprintf("**%s**\nVersion: v%s\nGo: %s\nOS: %s/%s", m.Cfg.BotName, m.Cfg.BotVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH), "Markdown")
+	msg := "**" + m.Cfg.BotName + "**\nVersion: v" + m.Cfg.BotVersion + "\nGo: " + runtime.Version() + "\nOS: " + runtime.GOOS + "/" + runtime.GOARCH
+	return c.Send(msg, "Markdown")
 }
 
 func (m *Module) handleHelp(c *bot.Context) error {
