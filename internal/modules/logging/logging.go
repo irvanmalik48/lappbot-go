@@ -30,6 +30,9 @@ func (m *Module) Register() {
 
 func (m *Module) checkForwardedLogChannel(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(c *bot.Context) error {
+		if c.Message == nil {
+			return next(c)
+		}
 		if c.Message.ForwardFromChat != nil && c.Message.ForwardFromChat.Type == "channel" {
 			if strings.HasPrefix(c.Message.Text, "/setlog") {
 				target, err := m.Bot.GetTargetChat(c)
@@ -211,6 +214,7 @@ func (m *Module) Log(chatID int64, category, message string) {
 		return
 	}
 
+	// If no log channel is set, return early
 	if group.LogChannelID == 0 {
 		return
 	}
