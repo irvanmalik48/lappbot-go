@@ -51,10 +51,7 @@ func (m *Module) handlePing(c *bot.Context) error {
 }
 
 func (m *Module) handlePingRefresh(c *bot.Context) error {
-	data := strings.TrimPrefix(c.Data(), "btn_refresh_ping|")
-	netLatency, _ := strconv.ParseInt(data, 10, 64)
-
-	msgStr, markup := m.buildPingMessage(netLatency)
+	msgStr, markup := m.buildPingMessage(0)
 	c.Respond("Refreshed")
 	return c.Edit(msgStr, markup, "Markdown")
 }
@@ -68,13 +65,11 @@ func (m *Module) buildPingMessage(netLatency int64) (string, *bot.ReplyMarkup) {
 	rtt := time.Since(start)
 
 	msg := "Ping: `" + strconv.FormatInt(rtt.Milliseconds(), 10) + "ms`"
-	if netLatency > 0 {
-		msg += "\nNetwork: `" + strconv.FormatInt(netLatency, 10) + "ms`"
-	}
+	msg += "\nNetwork: `" + strconv.FormatInt(netLatency, 10) + "ms`"
 
 	markup := &bot.ReplyMarkup{}
 	markup.InlineKeyboard = [][]bot.InlineKeyboardButton{
-		{{Text: "Refresh", CallbackData: "btn_refresh_ping|" + strconv.FormatInt(netLatency, 10)}},
+		{{Text: "Refresh", CallbackData: "btn_refresh_ping"}},
 	}
 
 	return msg, markup
