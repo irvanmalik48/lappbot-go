@@ -62,10 +62,10 @@ func (c *Context) Delete() error {
 	var msgID int64
 	var chatID int64
 
-	if c.Message != nil {
+	if c.Message != nil && c.Message.Chat != nil {
 		msgID = c.Message.ID
 		chatID = c.Message.Chat.ID
-	} else if c.Callback != nil && c.Callback.Message != nil {
+	} else if c.Callback != nil && c.Callback.Message != nil && c.Callback.Message.Chat != nil {
 		msgID = c.Callback.Message.ID
 		chatID = c.Callback.Message.Chat.ID
 	} else {
@@ -79,7 +79,7 @@ func (c *Context) Delete() error {
 }
 
 func (c *Context) Edit(text string, opts ...any) error {
-	if c.Callback != nil && c.Callback.Message != nil {
+	if c.Callback != nil && c.Callback.Message != nil && c.Callback.Message.Chat != nil {
 		req := EditMessageTextReq{
 			ChatID:    c.Callback.Message.Chat.ID,
 			MessageID: c.Callback.Message.ID,
