@@ -153,6 +153,15 @@ func (b *Bot) RequestHandler(ctx *fasthttp.RequestCtx) {
 			ctx.SetStatusCode(fasthttp.StatusOK)
 			return
 		}
+
+		if idx := strings.Index(data, "|"); idx != -1 {
+			if h, ok := b.Handlers[data[:idx]]; ok {
+				go b.process(h, c)
+				ctx.SetStatusCode(fasthttp.StatusOK)
+				return
+			}
+		}
+
 		b.contextPool.Put(c)
 	} else {
 		b.contextPool.Put(c)
@@ -505,6 +514,14 @@ func (b *Bot) processUpdate(update *Update) {
 			go b.process(h, ctx)
 			return
 		}
+
+		if idx := strings.Index(data, "|"); idx != -1 {
+			if h, ok := b.Handlers[data[:idx]]; ok {
+				go b.process(h, ctx)
+				return
+			}
+		}
+
 		b.contextPool.Put(ctx)
 	} else {
 		b.contextPool.Put(ctx)
