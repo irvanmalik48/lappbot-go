@@ -37,6 +37,7 @@ func (m *Module) Register() {
 	m.Bot.Handle("help_conn", m.onHelpCallback)
 	m.Bot.Handle("help_topics", m.onHelpCallback)
 	m.Bot.Handle("help_cursed", m.onHelpCallback)
+	m.Bot.Handle("btn_refresh_ping", m.handlePingRefresh)
 	m.Bot.Handle("/report", m.handleReport)
 }
 
@@ -45,21 +46,42 @@ func (m *Module) handleStart(c *bot.Context) error {
 }
 
 func (m *Module) handlePing(c *bot.Context) error {
-	latency := time.Since(time.Unix(c.Message.Date, 0)).Round(time.Millisecond)
+	msgStr, markup := m.buildPingMessage(c.Message.Date)
+	return c.Send(msgStr, markup, "Markdown")
+}
 
-	storePings, err := m.Bot.Store.Ping()
-	if err != nil {
-		return c.Send(fmt.Sprintf("Pong! Latency: %v\nError checking store: %v", latency, err))
+func (m *Module) handlePingRefresh(c *bot.Context) error {
+	msgStr, markup := m.buildPingMessage(0)
+	c.Respond("Refreshed")
+	return c.Edit(msgStr, markup, "Markdown")
+}
+
+func (m *Module) buildPingMessage(msgDate int64) (string, *bot.ReplyMarkup) {
+	start := time.Now()
+	m.Bot.Raw("getMe", nil)
+	network := time.Since(start)
+
+	var overall time.Duration
+	if msgDate > 0 {
+		overall = time.Since(time.Unix(msgDate, 0))
+	} else {
+		overall = network
 	}
 
-	uptime := time.Since(m.Bot.StartTime).Round(time.Second)
-	uptimeStr := strings.ReplaceAll(uptime.String(), "h", "h ")
-	uptimeStr = strings.ReplaceAll(uptimeStr, "m", "m ")
+	system := overall - network
+	if system < 0 {
+		system = 0
+	}
 
-	msg := fmt.Sprintf("**PONG!**\n\nBot: `%v`\nDatabase: `%v`\nValkey: `%v`\n\nUptime: `%v`",
-		latency, storePings["database"].Round(time.Millisecond), storePings["valkey"].Round(time.Millisecond), uptimeStr)
+	msg := fmt.Sprintf("System: `%dms`\nNetwork: `%dms`\nOverall: `%dms`",
+		system.Milliseconds(), network.Milliseconds(), overall.Milliseconds())
 
-	return c.Send(msg, "Markdown")
+	markup := &bot.ReplyMarkup{}
+	markup.InlineKeyboard = [][]bot.InlineKeyboardButton{
+		{{Text: "Refresh", CallbackData: "btn_refresh_ping"}},
+	}
+
+	return msg, markup
 }
 
 func (m *Module) handleVersion(c *bot.Context) error {
