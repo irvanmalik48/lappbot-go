@@ -19,6 +19,18 @@ func RunMigrations(cfg *config.Config) error {
 		return fmt.Errorf("failed to create migration instance: %w", err)
 	}
 
+	version, dirty, err := m.Version()
+	if err != nil && err != migrate.ErrNilVersion {
+		return fmt.Errorf("failed to get migration version: %w", err)
+	}
+
+	if dirty {
+		log.Warn().Uint("version", version).Msg("Database is dirty. Forcing version to previous to retry...")
+		if err := m.Force(int(version) - 1); err != nil {
+			return fmt.Errorf("failed to force migration version: %w", err)
+		}
+	}
+
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
