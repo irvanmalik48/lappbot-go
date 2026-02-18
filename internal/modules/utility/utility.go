@@ -50,7 +50,7 @@ func (m *Module) handlePing(c *bot.Context) error {
 }
 
 func (m *Module) handlePingRefresh(c *bot.Context) error {
-	msgStr, markup := m.buildPingMessage(0)
+	msgStr, markup := m.buildPingMessage(c.Callback.Message.Date)
 	c.Respond("Refreshed")
 	return c.Edit(msgStr, markup, "Markdown")
 }
