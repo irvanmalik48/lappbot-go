@@ -3,6 +3,7 @@ package utility
 import (
 	"lappbot/internal/bot"
 	"lappbot/internal/config"
+	"lappbot/internal/modules/logging"
 	"runtime"
 	"strconv"
 	"strings"
@@ -10,12 +11,13 @@ import (
 )
 
 type Module struct {
-	Bot *bot.Bot
-	Cfg *config.Config
+	Bot    *bot.Bot
+	Cfg    *config.Config
+	Logger *logging.Module
 }
 
-func New(b *bot.Bot, cfg *config.Config) *Module {
-	return &Module{Bot: b, Cfg: cfg}
+func New(b *bot.Bot, cfg *config.Config, l *logging.Module) *Module {
+	return &Module{Bot: b, Cfg: cfg, Logger: l}
 }
 
 func (m *Module) Register() {
@@ -36,6 +38,7 @@ func (m *Module) Register() {
 	m.Bot.Handle("help_conn", m.onHelpCallback)
 	m.Bot.Handle("help_topics", m.onHelpCallback)
 	m.Bot.Handle("help_cursed", m.onHelpCallback)
+	m.Bot.Handle("help_logging", m.onHelpCallback)
 	m.Bot.Handle("btn_refresh_ping", m.handlePingRefresh)
 	m.Bot.Handle("/report", m.handleReport)
 }
@@ -101,10 +104,19 @@ var helpCache = map[string]struct {
 				{{Text: "Moderation", CallbackData: "help_mod"}, {Text: "Settings", CallbackData: "help_settings"}},
 				{{Text: "Filters", CallbackData: "help_filters"}, {Text: "Warnings", CallbackData: "help_warns"}, {Text: "Admin", CallbackData: "help_admin"}},
 				{{Text: "Realm", CallbackData: "help_realm"}, {Text: "Anti-Spam", CallbackData: "help_antispam"}, {Text: "Purges", CallbackData: "help_purges"}},
-				{{Text: "Notes", CallbackData: "help_notes"}, {Text: "Connection", CallbackData: "help_conn"}},
+				{{Text: "Notes", CallbackData: "help_notes"}, {Text: "Connection", CallbackData: "help_conn"}, {Text: "Logging", CallbackData: "help_logging"}},
 				{{Text: "Topics", CallbackData: "help_topics"}, {Text: "Cursed", CallbackData: "help_cursed"}},
 			},
 		},
+	},
+	"logging": {
+		Text: `**Logging Commands:**
+/logchannel - View Log Channel
+/setlog - Set Log Channel
+/unsetlog - Unset Log Channel
+/log <category> - Enable Log Category
+/nolog <category> - Disable Log Category
+/logcategories - List Log Categories`,
 	},
 	"cursed": {
 		Text: `**Cursed Commands:**
@@ -291,6 +303,9 @@ func (m *Module) handleReport(c *bot.Context) error {
 		}
 		m.Bot.Raw("sendMessage", payload)
 	}
+
+	m.Logger.Log(c.Chat().ID, "reports", "Report filed by "+reporter.FirstName+"\nTriggering user: "+reportedUser.FirstName+"\nReason: "+reasonStr)
+
 	return c.Send("Report sent to admins.")
 }
 

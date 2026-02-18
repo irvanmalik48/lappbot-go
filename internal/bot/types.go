@@ -7,26 +7,27 @@ type Update struct {
 }
 
 type Message struct {
-	ID             int64           `json:"message_id"`
-	ThreadID       int64           `json:"message_thread_id,omitempty"`
-	Date           int64           `json:"date"`
-	From           *User           `json:"from,omitempty"`
-	Chat           *Chat           `json:"chat"`
-	ReplyTo        *Message        `json:"reply_to_message,omitempty"`
-	Sticker        *Sticker        `json:"sticker,omitempty"`
-	ReplyMarkup    *ReplyMarkup    `json:"reply_markup,omitempty"`
-	Video          *Video          `json:"video,omitempty"`
-	Audio          *Audio          `json:"audio,omitempty"`
-	Document       *Document       `json:"document,omitempty"`
-	Voice          *Voice          `json:"voice,omitempty"`
-	Animation      *Animation      `json:"animation,omitempty"`
-	VideoNote      *VideoNote      `json:"video_note,omitempty"`
-	LeftChatMember *User           `json:"left_chat_member,omitempty"`
-	Text           string          `json:"text,omitempty"`
-	Caption        string          `json:"caption,omitempty"`
-	Entities       []MessageEntity `json:"entities,omitempty"`
-	NewChatMembers []User          `json:"new_chat_members,omitempty"`
-	Photo          []PhotoSize     `json:"photo,omitempty"`
+	ID              int64           `json:"message_id"`
+	ThreadID        int64           `json:"message_thread_id,omitempty"`
+	Date            int64           `json:"date"`
+	From            *User           `json:"from,omitempty"`
+	Chat            *Chat           `json:"chat"`
+	ReplyTo         *Message        `json:"reply_to_message,omitempty"`
+	ForwardFromChat *Chat           `json:"forward_from_chat,omitempty"`
+	Sticker         *Sticker        `json:"sticker,omitempty"`
+	ReplyMarkup     *ReplyMarkup    `json:"reply_markup,omitempty"`
+	Video           *Video          `json:"video,omitempty"`
+	Audio           *Audio          `json:"audio,omitempty"`
+	Document        *Document       `json:"document,omitempty"`
+	Voice           *Voice          `json:"voice,omitempty"`
+	Animation       *Animation      `json:"animation,omitempty"`
+	VideoNote       *VideoNote      `json:"video_note,omitempty"`
+	LeftChatMember  *User           `json:"left_chat_member,omitempty"`
+	Text            string          `json:"text,omitempty"`
+	Caption         string          `json:"caption,omitempty"`
+	Entities        []MessageEntity `json:"entities,omitempty"`
+	NewChatMembers  []User          `json:"new_chat_members,omitempty"`
+	Photo           []PhotoSize     `json:"photo,omitempty"`
 }
 
 type PhotoSize struct {

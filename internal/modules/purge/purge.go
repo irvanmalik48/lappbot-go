@@ -2,23 +2,24 @@ package purge
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"time"
 
 	"lappbot/internal/bot"
+	"lappbot/internal/modules/logging"
 	"lappbot/internal/store"
 
 	"github.com/valkey-io/valkey-go"
 )
 
 type Module struct {
-	Bot   *bot.Bot
-	Store *store.Store
+	Bot    *bot.Bot
+	Store  *store.Store
+	Logger *logging.Module
 }
 
-func New(b *bot.Bot, s *store.Store) *Module {
-	return &Module{Bot: b, Store: s}
+func New(b *bot.Bot, s *store.Store, l *logging.Module) *Module {
+	return &Module{Bot: b, Store: s, Logger: l}
 }
 
 func (m *Module) Register() {
@@ -79,6 +80,8 @@ func (m *Module) handlePurge(c *bot.Context) error {
 
 	m.deleteMessages(c.Chat().ID, toDelete)
 
+	m.Logger.Log(c.Chat().ID, "admin", "Purged "+strconv.Itoa(len(toDelete))+" messages by "+c.Sender().FirstName)
+
 	if c.Message.Text != "" && (c.Message.Text == "/spurge" || len(c.Message.Text) > 7 && c.Message.Text[:7] == "/spurge") {
 		return nil
 	}
@@ -93,6 +96,7 @@ func (m *Module) handleDel(c *bot.Context) error {
 	}
 	m.deleteMessages(c.Chat().ID, []int{int(c.Message.ReplyTo.ID)})
 	c.Delete()
+	m.Logger.Log(c.Chat().ID, "admin", "Deleted message ID "+strconv.FormatInt(c.Message.ReplyTo.ID, 10)+" by "+c.Sender().FirstName)
 	return nil
 }
 
@@ -100,7 +104,7 @@ func (m *Module) handlePurgeFrom(c *bot.Context) error {
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a message to mark as purge start.")
 	}
-	key := fmt.Sprintf("purgefrom:%d", c.Chat().ID)
+	key := "purgefrom:" + strconv.FormatInt(c.Chat().ID, 10)
 	m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Set().Key(key).Value(strconv.Itoa(int(c.Message.ReplyTo.ID))).Ex(time.Minute*5).Build())
 
 	c.Delete()
@@ -112,7 +116,7 @@ func (m *Module) handlePurgeTo(c *bot.Context) error {
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a message to mark as purge end.")
 	}
-	key := fmt.Sprintf("purgefrom:%d", c.Chat().ID)
+	key := "purgefrom:" + strconv.FormatInt(c.Chat().ID, 10)
 	res, err := m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Get().Key(key).Build()).ToString()
 	if err != nil {
 		if valkey.IsValkeyNil(err) {
@@ -135,6 +139,7 @@ func (m *Module) handlePurgeTo(c *bot.Context) error {
 	m.deleteMessages(c.Chat().ID, toDelete)
 
 	m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Del().Key(key).Build())
+	m.Logger.Log(c.Chat().ID, "admin", "Range purge executed by "+c.Sender().FirstName+". Deleted "+strconv.Itoa(len(toDelete))+" messages.")
 	c.Send("Range purge complete.")
 	return nil
 }

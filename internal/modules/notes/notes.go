@@ -1,20 +1,21 @@
 package notes
 
 import (
-	"fmt"
 	"strings"
 
 	"lappbot/internal/bot"
+	"lappbot/internal/modules/logging"
 	"lappbot/internal/store"
 )
 
 type Module struct {
-	Bot   *bot.Bot
-	Store *store.Store
+	Bot    *bot.Bot
+	Store  *store.Store
+	Logger *logging.Module
 }
 
-func New(b *bot.Bot, s *store.Store) *Module {
-	return &Module{Bot: b, Store: s}
+func New(b *bot.Bot, s *store.Store, logger *logging.Module) *Module {
+	return &Module{Bot: b, Store: s, Logger: logger}
 }
 
 func (m *Module) Register() {
@@ -127,7 +128,8 @@ func (m *Module) handleSave(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Failed to save note.")
 	}
-	return c.Send(fmt.Sprintf("Note `%s` saved.", name), "Markdown")
+	m.Logger.Log(target.ID, "other", "Note saved: "+name)
+	return c.Send("Note `"+name+"` saved.", "Markdown")
 }
 
 func (m *Module) handleGet(c *bot.Context) error {
@@ -146,7 +148,7 @@ func (m *Module) handleGet(c *bot.Context) error {
 		return c.Send("Error fetching note.")
 	}
 	if note == nil {
-		return c.Send(fmt.Sprintf("Note `%s` not found.", name), "Markdown")
+		return c.Send("Note `"+name+"` not found.", "Markdown")
 	}
 
 	return m.sendNoteResponse(c, note)
@@ -167,10 +169,10 @@ func (m *Module) sendNoteResponse(c *bot.Context, note *store.Note) error {
 		markup := &bot.ReplyMarkup{}
 		btn := bot.InlineKeyboardButton{
 			Text:         "Click to get note",
-			CallbackData: fmt.Sprintf("get_note_pm|%s", note.Name),
+			CallbackData: "get_note_pm|" + note.Name,
 		}
 		markup.InlineKeyboard = [][]bot.InlineKeyboardButton{{btn}}
-		return c.Send(fmt.Sprintf("Click the button below to view note `%s`.", note.Name), markup, "Markdown")
+		return c.Send("Click the button below to view note `"+note.Name+"`.", markup, "Markdown")
 	}
 
 	return m.deliverNote(c.Chat().ID, note)
@@ -265,7 +267,8 @@ func (m *Module) handleClear(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Failed to minimize note.")
 	}
-	return c.Send(fmt.Sprintf("Note `%s` cleared.", name), "Markdown")
+	m.Logger.Log(target.ID, "other", "Note deleted: "+name)
+	return c.Send("Note `"+name+"` cleared.", "Markdown")
 }
 
 func (m *Module) handleNotes(c *bot.Context) error {
@@ -282,7 +285,7 @@ func (m *Module) handleNotes(c *bot.Context) error {
 	}
 	msg := "**Notes in this chat:**\n"
 	for _, n := range notes {
-		msg += fmt.Sprintf("- `%s`\n", n.Name)
+		msg += "- `" + n.Name + "`\n"
 	}
 	return c.Send(msg, "Markdown")
 }
@@ -299,6 +302,7 @@ func (m *Module) handleClearAll(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Failed to clear notes.")
 	}
+	m.Logger.Log(target.ID, "other", "All notes cleared by "+c.Sender().FirstName)
 	return c.Send("All notes cleared.")
 }
 
@@ -323,5 +327,5 @@ func (m *Module) handlePrivateNotes(c *bot.Context) error {
 	if newState {
 		status = "enabled"
 	}
-	return c.Send(fmt.Sprintf("Private notes %s.", status))
+	return c.Send("Private notes " + status + ".")
 }

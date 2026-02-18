@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -82,7 +81,7 @@ func (s *Store) ClearAllNotes(chatID int64) error {
 	q := `DELETE FROM notes WHERE chat_id = $1`
 	_, err := s.db.Exec(context.Background(), q, chatID)
 	if err == nil {
-		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key(fmt.Sprintf("notes:%d", chatID)).Build())
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key("notes:"+strconv.FormatInt(chatID, 10)).Build())
 	}
 	return err
 }

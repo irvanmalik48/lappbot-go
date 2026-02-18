@@ -12,15 +12,15 @@ func (m *Module) handlePin(c *bot.Context) error {
 		return c.Send("Reply to a message to pin/unpin it.")
 	}
 
-	msgID := c.Message.ReplyTo.ID
-
 	err := m.Bot.Raw("pinChatMessage", map[string]any{
 		"chat_id":    c.Chat().ID,
-		"message_id": msgID,
+		"message_id": c.Message.ReplyTo.ID,
 	})
 	if err != nil {
-		return c.Send("Failed to pin: " + err.Error())
+		return c.Send("Failed to pin message.")
 	}
+
+	m.Logger.Log(c.Chat().ID, "admin", "Message pinned by "+c.Sender().FirstName)
 
 	return nil
 }

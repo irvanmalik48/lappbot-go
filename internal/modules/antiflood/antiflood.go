@@ -2,24 +2,25 @@ package antiflood
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
 	"lappbot/internal/bot"
+	"lappbot/internal/modules/logging"
 	"lappbot/internal/store"
 
 	"github.com/valkey-io/valkey-go"
 )
 
 type Module struct {
-	Bot   *bot.Bot
-	Store *store.Store
+	Bot    *bot.Bot
+	Store  *store.Store
+	Logger *logging.Module
 }
 
-func New(b *bot.Bot, s *store.Store) *Module {
-	return &Module{Bot: b, Store: s}
+func New(b *bot.Bot, s *store.Store, l *logging.Module) *Module {
+	return &Module{Bot: b, Store: s, Logger: l}
 }
 
 func (m *Module) Register() {
@@ -104,6 +105,8 @@ func (m *Module) takeAction(c *bot.Context, group *store.Group) {
 	var until time.Time
 	var permissions map[string]bool
 
+	logMsg := "Antiflood triggered for " + c.Sender().FirstName + " (ID: " + strconv.FormatInt(c.Sender().ID, 10) + ")\nAction: " + action
+
 	switch action {
 	case "ban":
 		err = c.Bot.Raw("banChatMember", map[string]any{
@@ -131,6 +134,7 @@ func (m *Module) takeAction(c *bot.Context, group *store.Group) {
 			"user_id":    c.Sender().ID,
 			"until_date": until.Unix(),
 		})
+		logMsg += "\nDuration: " + duration
 	case "tmute":
 		d, _ := time.ParseDuration(duration)
 		until = time.Now().Add(d)
@@ -141,6 +145,7 @@ func (m *Module) takeAction(c *bot.Context, group *store.Group) {
 			"permissions": permissions,
 			"until_date":  until.Unix(),
 		})
+		logMsg += "\nDuration: " + duration
 	default:
 		permissions = map[string]bool{"can_send_messages": false}
 		err = c.Bot.Raw("restrictChatMember", map[string]any{
@@ -152,11 +157,13 @@ func (m *Module) takeAction(c *bot.Context, group *store.Group) {
 	}
 
 	if err != nil {
-		c.Send(fmt.Sprintf("Failed to execute flood action (%s) on %s: %v", action, c.Sender().FirstName, err))
+		c.Send("Failed to execute flood action (" + action + ") on " + c.Sender().FirstName + ": " + err.Error())
 		return
 	}
 
-	c.Send(fmt.Sprintf("Anti-flood triggered. Action: %s on %s.", action, c.Sender().FirstName))
+	m.Logger.Log(c.Chat().ID, "automated", logMsg)
+
+	c.Send("Anti-flood triggered. Action: " + action + " on " + c.Sender().FirstName + ".")
 
 	if group.AntifloodDelete {
 		c.Delete()
@@ -169,15 +176,11 @@ func (m *Module) handleFlood(c *bot.Context) error {
 		return err
 	}
 
-	info := fmt.Sprintf("**Antiflood Settings:**\n"+
-		"Consecutive: %d\n"+
-		"Timer: %d in %s\n"+
-		"Action: %s\n"+
-		"Clear Flood: %t",
-		group.AntifloodConsecutiveLimit,
-		group.AntifloodTimerLimit, group.AntifloodTimerDuration,
-		group.AntifloodAction,
-		group.AntifloodDelete)
+	info := "**Antiflood Settings:**\n" +
+		"Consecutive: " + strconv.Itoa(group.AntifloodConsecutiveLimit) + "\n" +
+		"Timer: " + strconv.Itoa(group.AntifloodTimerLimit) + " in " + group.AntifloodTimerDuration + "\n" +
+		"Action: " + group.AntifloodAction + "\n" +
+		"Clear Flood: " + strconv.FormatBool(group.AntifloodDelete)
 
 	return c.Send(info, "Markdown")
 }
@@ -202,7 +205,8 @@ func (m *Module) handleSetFlood(c *bot.Context) error {
 	}
 
 	m.Store.SetAntifloodConsecutiveLimit(c.Chat().ID, val)
-	return c.Send(fmt.Sprintf("Antiflood consecutive limit set to %v.", arg))
+	m.Logger.Log(c.Chat().ID, "settings", "Antiflood consecutive limit set to "+arg+" by "+c.Sender().FirstName)
+	return c.Send("Antiflood consecutive limit set to " + arg + ".")
 }
 
 func (m *Module) handleSetFloodTimer(c *bot.Context) error {
@@ -216,6 +220,7 @@ func (m *Module) handleSetFloodTimer(c *bot.Context) error {
 
 	if strings.ToLower(args[0]) == "off" || strings.ToLower(args[0]) == "no" {
 		m.Store.SetAntifloodTimer(c.Chat().ID, 0, "")
+		m.Logger.Log(c.Chat().ID, "settings", "Timed antiflood disabled by "+c.Sender().FirstName)
 		return c.Send("Timed antiflood disabled.")
 	}
 
@@ -234,7 +239,8 @@ func (m *Module) handleSetFloodTimer(c *bot.Context) error {
 	}
 
 	m.Store.SetAntifloodTimer(c.Chat().ID, count, args[1])
-	return c.Send(fmt.Sprintf("Timed antiflood set: %d messages in %s.", count, args[1]))
+	m.Logger.Log(c.Chat().ID, "settings", "Timed antiflood set to "+strconv.Itoa(count)+" in "+args[1]+" by "+c.Sender().FirstName)
+	return c.Send("Timed antiflood set: " + strconv.Itoa(count) + " messages in " + args[1] + ".")
 }
 
 func (m *Module) handleFloodMode(c *bot.Context) error {
@@ -248,7 +254,8 @@ func (m *Module) handleFloodMode(c *bot.Context) error {
 
 	action := strings.Join(args, " ")
 	m.Store.SetAntifloodAction(c.Chat().ID, action)
-	return c.Send(fmt.Sprintf("Antiflood action set to: %s", action))
+	m.Logger.Log(c.Chat().ID, "settings", "Antiflood action set to "+action+" by "+c.Sender().FirstName)
+	return c.Send("Antiflood action set to: " + action)
 }
 
 func (m *Module) handleClearFlood(c *bot.Context) error {
@@ -264,5 +271,6 @@ func (m *Module) handleClearFlood(c *bot.Context) error {
 	enabled := arg == "yes" || arg == "on"
 
 	m.Store.SetAntifloodDelete(c.Chat().ID, enabled)
-	return c.Send(fmt.Sprintf("Clear flood set to: %v", enabled))
+	m.Logger.Log(c.Chat().ID, "settings", "Antiflood message deletion set to "+strconv.FormatBool(enabled)+" by "+c.Sender().FirstName)
+	return c.Send("Clear flood set to: " + strconv.FormatBool(enabled))
 }

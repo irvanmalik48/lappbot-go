@@ -3,17 +3,19 @@ package cursed
 import (
 	"lappbot/internal/bot"
 	"lappbot/internal/config"
+	"lappbot/internal/modules/logging"
 	"math/rand"
 	"strings"
 )
 
 type Module struct {
-	Bot *bot.Bot
-	Cfg *config.Config
+	Bot    *bot.Bot
+	Cfg    *config.Config
+	Logger *logging.Module
 }
 
-func New(b *bot.Bot, cfg *config.Config) *Module {
-	return &Module{Bot: b, Cfg: cfg}
+func New(b *bot.Bot, cfg *config.Config, l *logging.Module) *Module {
+	return &Module{Bot: b, Cfg: cfg, Logger: l}
 }
 
 func (m *Module) Register() {

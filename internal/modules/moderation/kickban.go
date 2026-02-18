@@ -1,8 +1,8 @@
 package moderation
 
 import (
-	"fmt"
 	"lappbot/internal/bot"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -45,7 +45,8 @@ func (m *Module) kickUser(c *bot.Context, silent bool) error {
 		c.Delete()
 		return nil
 	}
-	return c.Send(fmt.Sprintf("%s kicked.\nReason: %s", mention(target), reasonStr), "Markdown")
+	m.Logger.Log(c.Chat().ID, "admin", "Kicked "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nReason: "+reasonStr)
+	return c.Send(mention(target)+" kicked.\nReason: "+reasonStr, "Markdown")
 }
 
 func (m *Module) handleBan(c *bot.Context) error {
@@ -88,7 +89,8 @@ func (m *Module) banUser(c *bot.Context, silent bool) error {
 		c.Delete()
 		return nil
 	}
-	return c.Send(fmt.Sprintf("%s banned.\nReason: %s", mention(target), reasonStr), "Markdown")
+	m.Logger.Log(c.Chat().ID, "admin", "Banned "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nReason: "+reasonStr)
+	return c.Send(mention(target)+" banned.\nReason: "+reasonStr, "Markdown")
 }
 
 func (m *Module) handleUnban(c *bot.Context) error {
@@ -109,7 +111,8 @@ func (m *Module) handleUnban(c *bot.Context) error {
 		return c.Send("Failed to unban user: " + err.Error())
 	}
 
-	return c.Send(fmt.Sprintf("%s unbanned.", mention(target)), "Markdown")
+	m.Logger.Log(c.Chat().ID, "unban", "Unbanned "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")")
+	return c.Send(mention(target)+" unbanned.", "Markdown")
 }
 
 func (m *Module) handleTimedBan(c *bot.Context) error {
@@ -152,7 +155,8 @@ func (m *Module) handleTimedBan(c *bot.Context) error {
 		return c.Send("Error banning user: " + err.Error())
 	}
 
-	return c.Send(fmt.Sprintf("%s banned for %s.\nReason: %s", mention(target), durationStr, reasonStr), "Markdown")
+	m.Logger.Log(c.Chat().ID, "ban", "Timed Ban for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nDuration: "+durationStr+"\nReason: "+reasonStr)
+	return c.Send(mention(target)+" banned for "+durationStr+".\nReason: "+reasonStr, "Markdown")
 }
 
 func (m *Module) handleRealmBan(c *bot.Context) error {
@@ -195,12 +199,12 @@ func (m *Module) handleRealmBan(c *bot.Context) error {
 			"user_id": target.ID,
 		})
 		if err == nil {
+			m.Logger.Log(g.TelegramID, "ban", "Realm Ban for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nReason: "+reasonStr)
 			successCount++
 		} else {
 			failCount++
 		}
 	}
 
-	return c.Send(fmt.Sprintf("Realm Ban Executed.\nTarget: %s\nBanned in: %d groups\nFailed in: %d groups\nReason: %s",
-		mention(target), successCount, failCount, reasonStr), "Markdown")
+	return c.Send("Realm Ban Executed.\nTarget: "+mention(target)+"\nBanned in: "+strconv.Itoa(successCount)+" groups\nFailed in: "+strconv.Itoa(failCount)+" groups\nReason: "+reasonStr, "Markdown")
 }

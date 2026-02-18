@@ -1,8 +1,8 @@
 package moderation
 
 import (
-	"fmt"
 	"lappbot/internal/bot"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -56,7 +56,8 @@ func (m *Module) muteUser(c *bot.Context, silent bool) error {
 		c.Delete()
 		return nil
 	}
-	return c.Send(fmt.Sprintf("%s muted.\nReason: %s", mention(target), reasonStr), "Markdown")
+	m.Logger.Log(c.Chat().ID, "admin", "Muted "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nReason: "+reasonStr)
+	return c.Send(mention(target)+" muted.\nReason: "+reasonStr, "Markdown")
 }
 
 func (m *Module) handleUnmute(c *bot.Context) error {
@@ -86,7 +87,8 @@ func (m *Module) handleUnmute(c *bot.Context) error {
 		return c.Send("Failed to unmute user: " + err.Error())
 	}
 
-	return c.Send(fmt.Sprintf("%s unmuted.", mention(target)), "Markdown")
+	m.Logger.Log(c.Chat().ID, "admin", "Unmuted "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")")
+	return c.Send(mention(target)+" unmuted.", "Markdown")
 }
 
 func (m *Module) handleTimedMute(c *bot.Context) error {
@@ -137,7 +139,8 @@ func (m *Module) handleTimedMute(c *bot.Context) error {
 		return c.Send("Error muting user: " + err.Error())
 	}
 
-	return c.Send(fmt.Sprintf("%s muted for %s.\nReason: %s", mention(target), durationStr, reasonStr), "Markdown")
+	m.Logger.Log(c.Chat().ID, "mute", "Timed Mute for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nDuration: "+durationStr+"\nReason: "+reasonStr)
+	return c.Send(mention(target)+" muted for "+durationStr+".\nReason: "+reasonStr, "Markdown")
 }
 
 func (m *Module) handleRealmMute(c *bot.Context) error {
@@ -189,12 +192,12 @@ func (m *Module) handleRealmMute(c *bot.Context) error {
 			"until_date":  0,
 		})
 		if err == nil {
+			m.Logger.Log(g.TelegramID, "mute", "Realm Mute for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nReason: "+reasonStr)
 			successCount++
 		} else {
 			failCount++
 		}
 	}
 
-	return c.Send(fmt.Sprintf("Realm Mute Executed.\nTarget: %s\nMuted in: %d groups\nFailed in: %d groups\nReason: %s",
-		mention(target), successCount, failCount, reasonStr), "Markdown")
+	return c.Send("Realm Mute Executed.\nTarget: "+mention(target)+"\nMuted in: "+strconv.Itoa(successCount)+" groups\nFailed in: "+strconv.Itoa(failCount)+" groups\nReason: "+reasonStr, "Markdown")
 }

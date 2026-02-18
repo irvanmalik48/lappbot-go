@@ -34,6 +34,8 @@ type Group struct {
 	WarnDuration              string
 	NotesPrivate              bool
 	ActionTopicID             *int64
+	LogChannelID              int64
+	LogCategories             string
 	CreatedAt                 any
 }
 
@@ -50,16 +52,20 @@ func (s *Store) GetGroup(telegramID int64) (*Group, error) {
 	q := `SELECT id, telegram_id, title, greeting_enabled, greeting_message, goodbye_enabled, goodbye_message, captcha_enabled,
                  antiraid_until, raid_action_time, auto_antiraid_threshold,
                  antiflood_consecutive_limit, antiflood_timer_limit, antiflood_timer_duration, antiflood_action, antiflood_delete,
-                 warn_limit, warn_action, warn_duration, notes_private, action_topic_id
+                 warn_limit, warn_action, warn_duration, notes_private, action_topic_id, log_channel_id, log_categories
           FROM groups WHERE telegram_id = $1`
 
 	var g Group
+	var logChannelID *int64
 	err = s.db.QueryRow(context.Background(), q, telegramID).Scan(
 		&g.ID, &g.TelegramID, &g.Title, &g.GreetingEnabled, &g.GreetingMessage, &g.GoodbyeEnabled, &g.GoodbyeMessage, &g.CaptchaEnabled,
 		&g.AntiraidUntil, &g.RaidActionTime, &g.AutoAntiraidThreshold,
 		&g.AntifloodConsecutiveLimit, &g.AntifloodTimerLimit, &g.AntifloodTimerDuration, &g.AntifloodAction, &g.AntifloodDelete,
-		&g.WarnLimit, &g.WarnAction, &g.WarnDuration, &g.NotesPrivate, &g.ActionTopicID,
+		&g.WarnLimit, &g.WarnAction, &g.WarnDuration, &g.NotesPrivate, &g.ActionTopicID, &logChannelID, &g.LogCategories,
 	)
+	if logChannelID != nil {
+		g.LogChannelID = *logChannelID
+	}
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil

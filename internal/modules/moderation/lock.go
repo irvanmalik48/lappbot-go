@@ -21,15 +21,16 @@ func (m *Module) handleLock(c *bot.Context) error {
 		"permissions": permissions,
 	})
 	if err != nil {
-		return c.Send("Failed to lock group: " + err.Error())
+		return c.Send("Failed to lock group.")
 	}
 
-	return c.Send("Group locked. Members cannot send messages.")
+	m.Logger.Log(c.Chat().ID, "admin", "Group locked by "+c.Sender().FirstName)
+	return c.Send("Group locked.")
 }
 
 func (m *Module) handleUnlock(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
-		return nil
+		return c.Send("You must be an admin to use this command.")
 	}
 
 	permissions := map[string]bool{
@@ -46,8 +47,9 @@ func (m *Module) handleUnlock(c *bot.Context) error {
 		"permissions": permissions,
 	})
 	if err != nil {
-		return c.Send("Failed to unlock group: " + err.Error())
+		return c.Send("Failed to unlock group.")
 	}
 
-	return c.Send("Group unlocked. Members can send messages.")
+	m.Logger.Log(c.Chat().ID, "admin", "Group unlocked by "+c.Sender().FirstName)
+	return c.Send("Group unlocked.")
 }

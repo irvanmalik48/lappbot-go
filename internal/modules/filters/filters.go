@@ -1,12 +1,12 @@
 package filters
 
 import (
-	"fmt"
 	"html"
 	"strings"
 	"sync"
 
 	"lappbot/internal/bot"
+	"lappbot/internal/modules/logging"
 	"lappbot/internal/store"
 )
 
@@ -16,18 +16,20 @@ type FiltersCache struct {
 }
 
 type FiltersModule struct {
-	Bot   *bot.Bot
-	Store *store.Store
-	Cache *FiltersCache
+	Bot    *bot.Bot
+	Store  *store.Store
+	Cache  *FiltersCache
+	Logger *logging.Module
 }
 
-func New(b *bot.Bot, s *store.Store) *FiltersModule {
+func New(b *bot.Bot, s *store.Store, l *logging.Module) *FiltersModule {
 	return &FiltersModule{
 		Bot:   b,
 		Store: s,
 		Cache: &FiltersCache{
 			Filters: make(map[int64][]store.Filter),
 		},
+		Logger: l,
 	}
 }
 
@@ -106,7 +108,9 @@ func (m *FiltersModule) handleFilter(c *bot.Context) error {
 	delete(m.Cache.Filters, target.ID)
 	m.Cache.Unlock()
 
-	return c.Send(fmt.Sprintf("Filter saved!\nTrigger: %s\nType: %s", trigger, kind))
+	m.Logger.Log(target.ID, "other", "Filter added by "+c.Sender().FirstName+"\nTrigger: "+trigger+"\nType: "+kind)
+
+	return c.Send("Filter saved!\nTrigger: " + trigger + "\nType: " + kind)
 }
 
 func (m *FiltersModule) handleStop(c *bot.Context) error {
@@ -133,7 +137,9 @@ func (m *FiltersModule) handleStop(c *bot.Context) error {
 	delete(m.Cache.Filters, target.ID)
 	m.Cache.Unlock()
 
-	return c.Send(fmt.Sprintf("Filter '%s' deleted.", trigger))
+	m.Logger.Log(target.ID, "other", "Filter deleted by "+c.Sender().FirstName+"\nTrigger: "+trigger)
+
+	return c.Send("Filter '" + trigger + "' deleted.")
 }
 
 func (m *FiltersModule) handleFilters(c *bot.Context) error {
@@ -152,7 +158,7 @@ func (m *FiltersModule) handleFilters(c *bot.Context) error {
 
 	msg := "<b>Active Filters:</b>\n"
 	for _, f := range filters {
-		msg += fmt.Sprintf("• <code>%s</code>\n", html.EscapeString(f.Trigger))
+		msg += "• <code>" + html.EscapeString(f.Trigger) + "</code>\n"
 	}
 
 	return c.Send(msg, "HTML")

@@ -2,22 +2,23 @@ package antiraid
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
 	"lappbot/internal/bot"
+	"lappbot/internal/modules/logging"
 	"lappbot/internal/store"
 )
 
 type Module struct {
-	Bot   *bot.Bot
-	Store *store.Store
+	Bot    *bot.Bot
+	Store  *store.Store
+	Logger *logging.Module
 }
 
-func New(b *bot.Bot, s *store.Store) *Module {
-	return &Module{Bot: b, Store: s}
+func New(b *bot.Bot, s *store.Store, l *logging.Module) *Module {
+	return &Module{Bot: b, Store: s, Logger: l}
 }
 
 func (m *Module) Register() {
@@ -37,22 +38,25 @@ func (m *Module) handleUserJoined(c *bot.Context) error {
 	if group.AntiraidUntil != nil && group.AntiraidUntil.After(time.Now()) {
 		for _, u := range c.Update.Message.NewChatMembers {
 			m.banUserRaw(c.Chat().ID, u.ID, group.RaidActionTime)
+			m.Logger.Log(c.Chat().ID, "automated", "Antiraid banned user: "+u.FirstName+" (ID: "+strconv.FormatInt(u.ID, 10)+")")
 		}
 		return nil
 	}
 
 	if group.AutoAntiraidThreshold > 0 {
-		key := fmt.Sprintf("antiraid:joins:%d:%d", c.Chat().ID, time.Now().Unix()/60)
+		key := "antiraid:joins:" + strconv.FormatInt(c.Chat().ID, 10) + ":" + strconv.FormatInt(time.Now().Unix()/60, 10)
 		val, _ := m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Incr().Key(key).Build()).AsInt64()
 		m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Expire().Key(key).Seconds(65).Build())
 
 		if val >= int64(group.AutoAntiraidThreshold) {
 			until := time.Now().Add(6 * time.Hour)
 			m.Store.SetAntiraidUntil(c.Chat().ID, &until)
-			c.Send(fmt.Sprintf("🚨 **ANTI-RAID AUTOMATICALLY ENABLED** 🚨\nMore than %d joins in the last minute.\nAnti-raid enabled for 6 hours.", group.AutoAntiraidThreshold), "Markdown")
+			c.Send("🚨 **ANTI-RAID AUTOMATICALLY ENABLED** 🚨\nMore than "+strconv.Itoa(group.AutoAntiraidThreshold)+" joins in the last minute.\nAnti-raid enabled for 6 hours.", "Markdown")
+			m.Logger.Log(c.Chat().ID, "automated", "Auto-Antiraid triggered. Threshold: "+strconv.Itoa(group.AutoAntiraidThreshold)+". Enabled for 6h.")
 
 			for _, u := range c.Update.Message.NewChatMembers {
 				m.banUserRaw(c.Chat().ID, u.ID, group.RaidActionTime)
+				m.Logger.Log(c.Chat().ID, "automated", "Antiraid banned user: "+u.FirstName+" (ID: "+strconv.FormatInt(u.ID, 10)+")")
 			}
 		}
 	}
@@ -87,6 +91,7 @@ func (m *Module) handleAntiraid(c *bot.Context) error {
 	arg := strings.ToLower(args[0])
 	if arg == "off" || arg == "no" {
 		m.Store.SetAntiraidUntil(c.Chat().ID, nil)
+		m.Logger.Log(c.Chat().ID, "settings", "Antiraid disabled by "+c.Sender().FirstName)
 		return c.Send("Anti-raid mode disabled.")
 	}
 
@@ -97,7 +102,8 @@ func (m *Module) handleAntiraid(c *bot.Context) error {
 
 	until := time.Now().Add(duration)
 	m.Store.SetAntiraidUntil(c.Chat().ID, &until)
-	return c.Send(fmt.Sprintf("Anti-raid enabled until %s.", until.Format(time.RFC822)))
+	m.Logger.Log(c.Chat().ID, "settings", "Antiraid enabled until "+until.Format(time.RFC822)+" by "+c.Sender().FirstName)
+	return c.Send("Anti-raid enabled until " + until.Format(time.RFC822) + ".")
 }
 
 func (m *Module) handleRaidTime(c *bot.Context) error {
@@ -116,7 +122,7 @@ func (m *Module) handleRaidActionTime(c *bot.Context) error {
 	args := c.Args
 	if len(args) == 0 {
 		group, _ := m.Store.GetGroup(c.Chat().ID)
-		return c.Send(fmt.Sprintf("Current raid action (ban) time: %s", group.RaidActionTime))
+		return c.Send("Current raid action (ban) time: " + group.RaidActionTime)
 	}
 
 	duration := args[0]
@@ -126,7 +132,8 @@ func (m *Module) handleRaidActionTime(c *bot.Context) error {
 	}
 
 	m.Store.SetRaidActionTime(c.Chat().ID, duration)
-	return c.Send(fmt.Sprintf("Raid action time set to %s.", duration))
+	m.Logger.Log(c.Chat().ID, "settings", "Raid action time set to "+duration+" by "+c.Sender().FirstName)
+	return c.Send("Raid action time set to " + duration + ".")
 }
 
 func (m *Module) handleAutoAntiraid(c *bot.Context) error {
@@ -142,6 +149,7 @@ func (m *Module) handleAutoAntiraid(c *bot.Context) error {
 	arg := strings.ToLower(args[0])
 	if arg == "off" || arg == "no" {
 		m.Store.SetAutoAntiraidThreshold(c.Chat().ID, 0)
+		m.Logger.Log(c.Chat().ID, "settings", "Auto-Antiraid disabled by "+c.Sender().FirstName)
 		return c.Send("Automatic anti-raid disabled.")
 	}
 
@@ -151,5 +159,6 @@ func (m *Module) handleAutoAntiraid(c *bot.Context) error {
 	}
 
 	m.Store.SetAutoAntiraidThreshold(c.Chat().ID, threshold)
-	return c.Send(fmt.Sprintf("Automatic anti-raid set to trigger at %d joins/minute.", threshold))
+	m.Logger.Log(c.Chat().ID, "settings", "Auto-Antiraid set to "+strconv.Itoa(threshold)+" joins/min by "+c.Sender().FirstName)
+	return c.Send("Automatic anti-raid set to trigger at " + strconv.Itoa(threshold) + " joins/minute.")
 }

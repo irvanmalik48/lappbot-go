@@ -1,9 +1,9 @@
 package moderation
 
 import (
-	"fmt"
 	"html"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -51,7 +51,8 @@ func (m *Module) handleBlacklistAdd(c *bot.Context) error {
 	delete(m.BlacklistCache.Emojis, c.Chat().ID)
 	m.BlacklistCache.Unlock()
 
-	return c.Send(fmt.Sprintf("Blacklisted %s: %s (Action: %s)", kind, value, action))
+	m.Logger.Log(c.Chat().ID, "admin", "Blacklisted "+kind+": "+value+" (Action: "+action+") by "+c.Sender().FirstName)
+	return c.Send("Blacklisted " + kind + ": " + value + " (Action: " + action + ")")
 }
 
 func (m *Module) handleBlacklistRemove(c *bot.Context) error {
@@ -78,7 +79,8 @@ func (m *Module) handleBlacklistRemove(c *bot.Context) error {
 	delete(m.BlacklistCache.Emojis, c.Chat().ID)
 	m.BlacklistCache.Unlock()
 
-	return c.Send(fmt.Sprintf("Removed %s from blacklist: %s", kind, value))
+	m.Logger.Log(c.Chat().ID, "admin", "Removed "+kind+" from blacklist: "+value+" by "+c.Sender().FirstName)
+	return c.Send("Removed " + kind + " from blacklist: " + value)
 }
 
 func (m *Module) handleBlacklistList(c *bot.Context) error {
@@ -93,7 +95,7 @@ func (m *Module) handleBlacklistList(c *bot.Context) error {
 
 	msg := "<b>Blacklist:</b>\n"
 	for _, item := range items {
-		msg += fmt.Sprintf("• [%s] %s (Action: %s)\n", html.EscapeString(item.Type), html.EscapeString(item.Value), html.EscapeString(item.Action))
+		msg += "• [" + html.EscapeString(item.Type) + "] " + html.EscapeString(item.Value) + " (Action: " + html.EscapeString(item.Action) + ")\n"
 	}
 
 	return c.Send(msg, "HTML")
@@ -238,7 +240,7 @@ func (m *Module) executeBlacklistAction(c *bot.Context, item store.BlacklistItem
 	case "soft_warn":
 		m.Bot.Raw("sendMessage", map[string]any{
 			"chat_id":    c.Chat().ID,
-			"text":       fmt.Sprintf("%s, that is not allowed here.", mention(c.Sender())),
+			"text":       mention(c.Sender()) + ", that is not allowed here.",
 			"parse_mode": "Markdown",
 		})
 		return nil
@@ -247,7 +249,7 @@ func (m *Module) executeBlacklistAction(c *bot.Context, item store.BlacklistItem
 		if err != nil {
 			return nil
 		}
-		msg := fmt.Sprintf("%s has been warned (Blacklist).\nTotal Warns: %d/3", mention(c.Sender()), count)
+		msg := mention(c.Sender()) + " has been warned (Blacklist).\nTotal Warns: " + strconv.Itoa(count) + "/3"
 		if count >= 3 {
 			m.Bot.Raw("banChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": c.Sender().ID})
 			m.Bot.Raw("unbanChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": c.Sender().ID, "only_if_banned": true})
@@ -258,7 +260,7 @@ func (m *Module) executeBlacklistAction(c *bot.Context, item store.BlacklistItem
 		return nil
 	case "kick":
 		m.Bot.Raw("unbanChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": c.Sender().ID})
-		c.Send(fmt.Sprintf("%s kicked for blacklist violation.", mention(c.Sender())))
+		c.Send(mention(c.Sender()) + " kicked for blacklist violation.")
 		return nil
 	case "mute":
 		duration := 30 * time.Minute
@@ -281,11 +283,11 @@ func (m *Module) executeBlacklistAction(c *bot.Context, item store.BlacklistItem
 			"permissions": permissions,
 			"until_date":  until,
 		})
-		c.Send(fmt.Sprintf("%s muted for %v (Blacklist violation).", mention(c.Sender()), duration))
+		c.Send(mention(c.Sender()) + " muted for " + duration.String() + " (Blacklist violation).")
 		return nil
 	case "ban":
 		m.Bot.Raw("banChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": c.Sender().ID})
-		c.Send(fmt.Sprintf("%s banned for blacklist violation.", mention(c.Sender())))
+		c.Send(mention(c.Sender()) + " banned for blacklist violation.")
 		return nil
 	}
 

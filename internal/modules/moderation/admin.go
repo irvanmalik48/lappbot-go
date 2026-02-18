@@ -1,8 +1,8 @@
 package moderation
 
 import (
-	"fmt"
 	"lappbot/internal/bot"
+	"strconv"
 	"strings"
 )
 
@@ -27,7 +27,7 @@ func (m *Module) handleApprove(c *bot.Context) error {
 	m.BlacklistCache.ApprovedUsers[c.Chat().ID][target.ID] = struct{}{}
 	m.BlacklistCache.Unlock()
 
-	return c.Send(fmt.Sprintf("%s is now approved.", mention(target)), "Markdown")
+	return c.Send(mention(target)+" is now approved.", "Markdown")
 }
 
 func (m *Module) handleUnapprove(c *bot.Context) error {
@@ -44,18 +44,13 @@ func (m *Module) handleUnapprove(c *bot.Context) error {
 		return c.Send("Failed to unapprove user: " + err.Error())
 	}
 
-	m.BlacklistCache.Lock()
-	if m.BlacklistCache.ApprovedUsers[c.Chat().ID] != nil {
-		delete(m.BlacklistCache.ApprovedUsers[c.Chat().ID], target.ID)
-	}
-	m.BlacklistCache.Unlock()
-
-	return c.Send(fmt.Sprintf("%s is no longer approved.", mention(target)), "Markdown")
+	m.Logger.Log(c.Chat().ID, "admin", "Unapproved "+target.FirstName+" (ID: "+strconv.FormatInt(target.ID, 10)+") by "+c.Sender().FirstName)
+	return c.Send("Unapproved " + mention(target) + ".")
 }
 
 func (m *Module) handlePromote(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
-		return nil
+		return c.Send("You must be an admin to use this command.")
 	}
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to promote them.")
@@ -96,12 +91,13 @@ func (m *Module) handlePromote(c *bot.Context) error {
 	})
 
 	m.Bot.InvalidateAdminCache(c.Chat().ID, target.ID)
-	return c.Send(fmt.Sprintf("%s promoted to admin with title '%s'.", mention(target), title), "Markdown")
+	m.Logger.Log(c.Chat().ID, "admin", "Promoted "+target.FirstName+" to admin ("+title+") by "+c.Sender().FirstName)
+	return c.Send(mention(target)+" promoted to admin with title '"+title+"'.", "Markdown")
 }
 
 func (m *Module) handleDemote(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
-		return nil
+		return c.Send("You must be an admin to use this command.")
 	}
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to demote them.")
@@ -130,5 +126,5 @@ func (m *Module) handleDemote(c *bot.Context) error {
 	}
 
 	m.Bot.InvalidateAdminCache(c.Chat().ID, target.ID)
-	return c.Send(fmt.Sprintf("%s demoted to member.", mention(target)), "Markdown")
+	return c.Send(mention(target)+" demoted to member.", "Markdown")
 }

@@ -3,6 +3,7 @@ package moderation
 import (
 	"context"
 	"lappbot/internal/bot"
+	"lappbot/internal/modules/logging"
 	"lappbot/internal/store"
 	"regexp"
 	"strconv"
@@ -27,9 +28,10 @@ type Module struct {
 	Bot            *bot.Bot
 	Store          *store.Store
 	BlacklistCache *BlacklistCache
+	Logger         *logging.Module
 }
 
-func New(b *bot.Bot, s *store.Store) *Module {
+func New(b *bot.Bot, s *store.Store, logger *logging.Module) *Module {
 	return &Module{
 		Bot:   b,
 		Store: s,
@@ -39,6 +41,7 @@ func New(b *bot.Bot, s *store.Store) *Module {
 			Emojis:        make(map[int64]map[string]store.BlacklistItem),
 			ApprovedUsers: make(map[int64]map[int64]struct{}),
 		},
+		Logger: logger,
 	}
 }
 

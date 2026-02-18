@@ -1,21 +1,22 @@
 package connections
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
 	"lappbot/internal/bot"
+	"lappbot/internal/modules/logging"
 	"lappbot/internal/store"
 )
 
 type Module struct {
-	Bot   *bot.Bot
-	Store *store.Store
+	Bot    *bot.Bot
+	Store  *store.Store
+	Logger *logging.Module
 }
 
-func New(b *bot.Bot, s *store.Store) *Module {
-	return &Module{Bot: b, Store: s}
+func New(b *bot.Bot, s *store.Store, l *logging.Module) *Module {
+	return &Module{Bot: b, Store: s, Logger: l}
 }
 
 func (m *Module) Register() {
@@ -37,7 +38,8 @@ func (m *Module) handleConnect(c *bot.Context) error {
 		if err != nil {
 			return c.Send("Failed to connect.")
 		}
-		return c.Send(fmt.Sprintf("Connected to %s.", c.Chat().Title))
+		m.Logger.Log(c.Chat().ID, "other", "User connected via command in group (ID: "+strconv.FormatInt(c.Chat().ID, 10)+")")
+		return c.Send("Connected to " + c.Chat().Title + ".")
 	}
 
 	if len(args) > 0 {
@@ -56,7 +58,8 @@ func (m *Module) handleConnect(c *bot.Context) error {
 			return c.Send("Failed to connect.")
 		}
 		_ = m.Store.AddConnectionHistory(c.Sender().ID, chat.ID, chat.Title)
-		return c.Send(fmt.Sprintf("Connected to %s.", chat.Title))
+		m.Logger.Log(chat.ID, "other", "User connected remotely via PM (ID: "+strconv.FormatInt(c.Sender().ID, 10)+")")
+		return c.Send("Connected to " + chat.Title + ".")
 	}
 
 	history, err := m.Store.GetConnectionHistory(c.Sender().ID)
@@ -69,7 +72,7 @@ func (m *Module) handleConnect(c *bot.Context) error {
 
 	var rows [][]bot.InlineKeyboardButton
 	for _, item := range history {
-		data := fmt.Sprintf("conn_connect|%d", item.ChatID)
+		data := "conn_connect|" + strconv.FormatInt(item.ChatID, 10)
 		btn := bot.InlineKeyboardButton{Text: item.ChatTitle, CallbackData: data}
 		rows = append(rows, []bot.InlineKeyboardButton{btn})
 	}
@@ -110,8 +113,10 @@ func (m *Module) onConnectCallback(c *bot.Context) error {
 		return nil
 	}
 
+	m.Logger.Log(chat.ID, "other", "User connected via history button (ID: "+strconv.FormatInt(c.Sender().ID, 10)+")")
+
 	c.Delete()
-	return c.Send(fmt.Sprintf("Connected to %s.", chat.Title))
+	return c.Send("Connected to " + chat.Title + ".")
 }
 
 func (m *Module) handleDisconnect(c *bot.Context) error {
@@ -129,7 +134,7 @@ func (m *Module) handleReconnect(c *bot.Context) error {
 	}
 
 	last := history[0]
-	chatStr := fmt.Sprintf("%d", last.ChatID)
+	chatStr := strconv.FormatInt(last.ChatID, 10)
 	chat, err := m.Bot.ResolveChat(chatStr)
 	if err != nil {
 		return c.Send("Previous chat not found.")
@@ -143,7 +148,8 @@ func (m *Module) handleReconnect(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Failed to connect.")
 	}
-	return c.Send(fmt.Sprintf("Reconnected to %s.", chat.Title))
+	m.Logger.Log(chat.ID, "other", "User reconnected via command (ID: "+strconv.FormatInt(c.Sender().ID, 10)+")")
+	return c.Send("Reconnected to " + chat.Title + ".")
 }
 
 func (m *Module) handleConnection(c *bot.Context) error {
@@ -156,5 +162,5 @@ func (m *Module) handleConnection(c *bot.Context) error {
 		return c.Send("Not connected to any remote chat.")
 	}
 
-	return c.Send(fmt.Sprintf("Currently connected to: %s (ID: %d)", target.Title, target.ID))
+	return c.Send("Currently connected to: " + target.Title + " (ID: " + strconv.FormatInt(target.ID, 10) + ")")
 }

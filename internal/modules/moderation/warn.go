@@ -1,7 +1,6 @@
 package moderation
 
 import (
-	"fmt"
 	"lappbot/internal/bot"
 	"strconv"
 	"strings"
@@ -44,6 +43,8 @@ func (m *Module) warnUser(c *bot.Context, deleteMessage, silent bool) error {
 		return c.Send("Error adding warn: " + err.Error())
 	}
 
+	m.Logger.Log(c.Chat().ID, "admin", "Warned "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nReason: "+reasonStr)
+
 	if deleteMessage {
 		m.Bot.Raw("deleteMessage", map[string]any{
 			"chat_id":    c.Chat().ID,
@@ -74,7 +75,7 @@ func (m *Module) checkPunish(c *bot.Context, target *bot.User, reason string, si
 		return err
 	}
 
-	msg := fmt.Sprintf("User %s has been warned.\nReason: %s\nTotal Warns: %d/%d", mention(target), reason, count, group.WarnLimit)
+	msg := "User " + mention(target) + " has been warned.\nReason: " + reason + "\nTotal Warns: " + strconv.Itoa(count) + "/" + strconv.Itoa(group.WarnLimit)
 
 	if count >= group.WarnLimit {
 		m.Store.ResetWarns(target.ID, c.Chat().ID)
@@ -95,27 +96,33 @@ func (m *Module) checkPunish(c *bot.Context, target *bot.User, reason string, si
 		switch actType {
 		case "ban":
 			err = m.Bot.Raw("banChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": target.ID})
+			m.Logger.Log(c.Chat().ID, "admin", "Warn removed from "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+") by "+c.Sender().FirstName)
 			msg += "\nAction: Banned."
 		case "kick":
 			err = m.Bot.Raw("unbanChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": target.ID})
+			m.Logger.Log(c.Chat().ID, "kick", "Kicked "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+") for reaching warn limit.")
 			msg += "\nAction: Kicked."
 		case "mute":
 			permissions := map[string]bool{"can_send_messages": false}
 			err = m.Bot.Raw("restrictChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": target.ID, "permissions": permissions, "until_date": 0})
+			m.Logger.Log(c.Chat().ID, "mute", "Muted "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+") for reaching warn limit.")
 			msg += "\nAction: Muted."
 		case "tban":
 			d, _ := time.ParseDuration(duration)
 			until := time.Now().Add(d).Unix()
 			err = m.Bot.Raw("banChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": target.ID, "until_date": until})
-			msg += fmt.Sprintf("\nAction: Banned for %s.", duration)
+			m.Logger.Log(c.Chat().ID, "admin", "Warns reset for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+") by "+c.Sender().FirstName)
+			msg += "\nAction: Banned for " + duration + "."
 		case "tmute":
 			d, _ := time.ParseDuration(duration)
 			until := time.Now().Add(d).Unix()
 			permissions := map[string]bool{"can_send_messages": false}
 			err = m.Bot.Raw("restrictChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": target.ID, "permissions": permissions, "until_date": until})
-			msg += fmt.Sprintf("\nAction: Muted for %s.", duration)
+			m.Logger.Log(c.Chat().ID, "mute", "Timed Mute for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+") for reaching warn limit.\nDuration: "+duration)
+			msg += "\nAction: Muted for " + duration + "."
 		default:
 			err = m.Bot.Raw("unbanChatMember", map[string]any{"chat_id": c.Chat().ID, "user_id": target.ID})
+			m.Logger.Log(c.Chat().ID, "kick", "Kicked "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+") for reaching warn limit (Default).")
 			msg += "\nAction: Kicked (Default)."
 		}
 
@@ -126,7 +133,7 @@ func (m *Module) checkPunish(c *bot.Context, target *bot.User, reason string, si
 		markup := &bot.ReplyMarkup{}
 		btn := bot.InlineKeyboardButton{
 			Text:         "Remove Warn",
-			CallbackData: fmt.Sprintf("btn_remove_warn|%d", target.ID),
+			CallbackData: "btn_remove_warn|" + strconv.FormatInt(target.ID, 10),
 		}
 		markup.InlineKeyboard = [][]bot.InlineKeyboardButton{{btn}}
 
@@ -162,7 +169,8 @@ func (m *Module) handleRmWarn(c *bot.Context) error {
 		return c.Send("Error removing warn: " + err.Error())
 	}
 
-	return c.Send(fmt.Sprintf("Last warn removed for %s.", targetName))
+	m.Logger.Log(c.Chat().ID, "admin", "All warns reset by "+c.Sender().FirstName)
+	return c.Send("Last warn removed for " + targetName + ".")
 }
 
 func (m *Module) handleResetWarns(c *bot.Context) error {
@@ -178,7 +186,8 @@ func (m *Module) handleResetWarns(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Error resetting warns.")
 	}
-	return c.Send(fmt.Sprintf("Warns reset for %s.", mention(target)), "Markdown")
+	m.Logger.Log(c.Chat().ID, "warn", "Reset user warns for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")")
+	return c.Send("Warns reset for "+mention(target)+".", "Markdown")
 }
 
 func (m *Module) handleResetAllWarns(c *bot.Context) error {
@@ -189,6 +198,7 @@ func (m *Module) handleResetAllWarns(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Error resetting all warns: " + err.Error())
 	}
+	m.Logger.Log(c.Chat().ID, "warn", "Reset all warns in chat")
 	return c.Send("All warnings in this chat have been reset.")
 }
 
@@ -198,7 +208,7 @@ func (m *Module) handleWarnings(c *bot.Context) error {
 		return err
 	}
 
-	msg := fmt.Sprintf("**Warnings Settings:**\nLimit: %d\nAction: %s\nDuration: %s", group.WarnLimit, group.WarnAction, group.WarnDuration)
+	msg := "**Warnings Settings:**\nLimit: " + strconv.Itoa(group.WarnLimit) + "\nAction: " + group.WarnAction + "\nDuration: " + group.WarnDuration
 	return c.Send(msg, "Markdown")
 }
 
@@ -213,7 +223,7 @@ func (m *Module) handleWarnMode(c *bot.Context) error {
 
 	action := strings.Join(args, " ")
 	m.Store.SetWarnAction(c.Chat().ID, action)
-	return c.Send(fmt.Sprintf("Warn action set to: %s", action))
+	return c.Send("Warn action set to: " + action)
 }
 
 func (m *Module) handleWarnLimit(c *bot.Context) error {
@@ -231,7 +241,7 @@ func (m *Module) handleWarnLimit(c *bot.Context) error {
 	}
 
 	m.Store.SetWarnLimit(c.Chat().ID, limit)
-	return c.Send(fmt.Sprintf("Warn limit set to: %d", limit))
+	return c.Send("Warn limit set to: " + strconv.Itoa(limit))
 }
 
 func (m *Module) handleWarnTime(c *bot.Context) error {
@@ -252,7 +262,7 @@ func (m *Module) handleWarnTime(c *bot.Context) error {
 	}
 
 	m.Store.SetWarnDuration(c.Chat().ID, duration)
-	return c.Send(fmt.Sprintf("Warn duration set to: %s", duration))
+	return c.Send("Warn duration set to: " + duration)
 }
 
 func (m *Module) handleMyWarns(c *bot.Context) error {
@@ -273,7 +283,7 @@ func (m *Module) handleMyWarns(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Error retrieving warns.")
 	}
-	return c.Send(fmt.Sprintf("You have %d/%d warns.", count, group.WarnLimit))
+	return c.Send("You have " + strconv.Itoa(count) + "/" + strconv.Itoa(group.WarnLimit) + " warns.")
 }
 
 func (m *Module) onRemoveWarnBtn(c *bot.Context) error {
@@ -295,5 +305,6 @@ func (m *Module) onRemoveWarnBtn(c *bot.Context) error {
 	}
 
 	c.Delete()
+	m.Logger.Log(c.Chat().ID, "warn", "Removed warn for user ID "+strconv.FormatInt(targetID, 10)+" via button")
 	return c.Respond("Warn removed.")
 }

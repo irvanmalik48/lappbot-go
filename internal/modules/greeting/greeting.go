@@ -2,18 +2,20 @@ package greeting
 
 import (
 	"lappbot/internal/bot"
+	"lappbot/internal/modules/logging"
 	"lappbot/internal/modules/utility"
 	"lappbot/internal/store"
 	"strings"
 )
 
 type Module struct {
-	Bot   *bot.Bot
-	Store *store.Store
+	Bot    *bot.Bot
+	Store  *store.Store
+	Logger *logging.Module
 }
 
-func New(b *bot.Bot, s *store.Store) *Module {
-	return &Module{Bot: b, Store: s}
+func New(b *bot.Bot, s *store.Store, l *logging.Module) *Module {
+	return &Module{Bot: b, Store: s, Logger: l}
 }
 
 func (m *Module) Register() {
@@ -85,12 +87,14 @@ func (m *Module) handleWelcomeCommand(c *bot.Context) error {
 		if err != nil {
 			return c.Send("Error updating setting: " + err.Error())
 		}
+		m.Logger.Log(c.Chat().ID, "settings", "Welcome message enabled by "+c.Sender().FirstName)
 		return c.Send("Welcome message enabled.")
 	case "off":
 		err := m.Store.SetGreetingStatus(c.Chat().ID, false)
 		if err != nil {
 			return c.Send("Error updating setting: " + err.Error())
 		}
+		m.Logger.Log(c.Chat().ID, "settings", "Welcome message disabled by "+c.Sender().FirstName)
 		return c.Send("Welcome message disabled.")
 	case "text":
 		msg := ""
@@ -114,6 +118,7 @@ func (m *Module) handleWelcomeCommand(c *bot.Context) error {
 		if err != nil {
 			return c.Send("Error updating setting: " + err.Error())
 		}
+		m.Logger.Log(c.Chat().ID, "settings", "Welcome message set by "+c.Sender().FirstName)
 		return c.Send("Welcome message set.")
 	default:
 		return c.Send("Invalid argument. Use 'on', 'off', or 'text'.")
@@ -136,12 +141,14 @@ func (m *Module) handleGoodbyeCommand(c *bot.Context) error {
 		if err != nil {
 			return c.Send("Error updating setting: " + err.Error())
 		}
+		m.Logger.Log(c.Chat().ID, "settings", "Goodbye message enabled by "+c.Sender().FirstName)
 		return c.Send("Goodbye message enabled.")
 	case "off":
 		err := m.Store.SetGoodbyeStatus(c.Chat().ID, false)
 		if err != nil {
 			return c.Send("Error updating setting: " + err.Error())
 		}
+		m.Logger.Log(c.Chat().ID, "settings", "Goodbye message disabled by "+c.Sender().FirstName)
 		return c.Send("Goodbye message disabled.")
 	case "text":
 		msg := ""
@@ -165,6 +172,7 @@ func (m *Module) handleGoodbyeCommand(c *bot.Context) error {
 		if err != nil {
 			return c.Send("Error updating setting: " + err.Error())
 		}
+		m.Logger.Log(c.Chat().ID, "settings", "Goodbye message set by "+c.Sender().FirstName)
 		return c.Send("Goodbye message set.")
 	default:
 		return c.Send("Invalid argument. Use 'on', 'off', or 'text'.")
