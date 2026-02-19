@@ -33,7 +33,14 @@ func (m *Module) checkForwardedLogChannel(next bot.HandlerFunc) bot.HandlerFunc 
 		if c.Message == nil {
 			return next(c)
 		}
-		if c.Message.ForwardFromChat != nil && c.Message.ForwardFromChat.Type == "channel" {
+		var channel *bot.Chat
+		if c.Message.ForwardFromChat != nil {
+			channel = c.Message.ForwardFromChat
+		} else if c.Message.ForwardOrigin != nil && c.Message.ForwardOrigin.Type == "channel" {
+			channel = c.Message.ForwardOrigin.Chat
+		}
+
+		if channel != nil && channel.Type == "channel" {
 			if strings.HasPrefix(c.Message.Text, "/setlog") {
 				target, err := m.Bot.GetTargetChat(c)
 				if err != nil {
@@ -43,8 +50,6 @@ func (m *Module) checkForwardedLogChannel(next bot.HandlerFunc) bot.HandlerFunc 
 				if !m.Bot.IsAdmin(target, c.Sender()) {
 					return next(c)
 				}
-
-				channel := c.Message.ForwardFromChat
 
 				err = m.Store.SetLogChannel(target.ID, channel.ID)
 				if err != nil {

@@ -446,10 +446,14 @@ func (b *Bot) processUpdate(update *Update) {
 	ctx := b.contextPool.Get().(*Context)
 	ctx.Reset(b, update)
 
-	if update.Message != nil {
-		ctx.Message = update.Message
+	if update.Message != nil || update.ChannelPost != nil {
+		if update.Message != nil {
+			ctx.Message = update.Message
+		} else {
+			ctx.Message = update.ChannelPost
+		}
 
-		if len(update.Message.NewChatMembers) > 0 {
+		if len(ctx.Message.NewChatMembers) > 0 {
 			if h, ok := b.Handlers["new_chat_members"]; ok {
 				go b.process(h, ctx)
 			} else {

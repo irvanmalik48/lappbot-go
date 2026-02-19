@@ -3,6 +3,7 @@ package bot
 type Update struct {
 	UpdateID      int64          `json:"update_id"`
 	Message       *Message       `json:"message,omitempty"`
+	ChannelPost   *Message       `json:"channel_post,omitempty"`
 	CallbackQuery *CallbackQuery `json:"callback_query,omitempty"`
 }
 
@@ -14,6 +15,7 @@ type Message struct {
 	Chat            *Chat           `json:"chat"`
 	ReplyTo         *Message        `json:"reply_to_message,omitempty"`
 	ForwardFromChat *Chat           `json:"forward_from_chat,omitempty"`
+	ForwardOrigin   *MessageOrigin  `json:"forward_origin,omitempty"`
 	Sticker         *Sticker        `json:"sticker,omitempty"`
 	ReplyMarkup     *ReplyMarkup    `json:"reply_markup,omitempty"`
 	Video           *Video          `json:"video,omitempty"`
@@ -28,6 +30,14 @@ type Message struct {
 	Entities        []MessageEntity `json:"entities,omitempty"`
 	NewChatMembers  []User          `json:"new_chat_members,omitempty"`
 	Photo           []PhotoSize     `json:"photo,omitempty"`
+}
+
+type MessageOrigin struct {
+	Type       string `json:"type"`
+	Date       int64  `json:"date"`
+	Chat       *Chat  `json:"chat,omitempty"`
+	MessageID  int64  `json:"message_id,omitempty"`
+	AuthorSign string `json:"author_signature,omitempty"`
 }
 
 type PhotoSize struct {
