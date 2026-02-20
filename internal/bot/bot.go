@@ -484,6 +484,10 @@ func (b *Bot) processUpdate(update *Update) {
 				}
 			}
 
+			if h, ok := b.Handlers["unknown_command"]; ok {
+				go b.process(h, ctx)
+				return
+			}
 			if h, ok := b.Handlers["on_text"]; ok {
 				go b.process(h, ctx)
 				return

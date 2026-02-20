@@ -9,6 +9,7 @@ import (
 	"lappbot/internal/modules/antiflood"
 	"lappbot/internal/modules/antiraid"
 	"lappbot/internal/modules/captcha"
+	"lappbot/internal/modules/clean"
 	"lappbot/internal/modules/connections"
 	"lappbot/internal/modules/cursed"
 	"lappbot/internal/modules/filters"
@@ -55,6 +56,7 @@ func main() {
 	moderation.New(b, st, logger).Register()
 	notes.New(b, st, logger).Register()
 	topics.New(b, cfg, logger).Register()
+	clean.New(b, st).Register()
 
 	if cfg.UseWebhook {
 		b.StartWebhook()
