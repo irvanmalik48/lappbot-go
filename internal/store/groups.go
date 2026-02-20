@@ -85,8 +85,8 @@ func (s *Store) CreateGroup(telegramID int64, title string) error {
 	if err != nil {
 		return err
 	}
-	q := `INSERT INTO groups (id, telegram_id, title, greeting_enabled, greeting_message, goodbye_enabled, goodbye_message) 
-          VALUES ($1, $2, $3, true, 'Welcome {firstname} (ID: {userid}) to the group!', true, 'Goodbye {firstname} (ID: {userid}), see you soon!') 
+	q := `INSERT INTO groups (id, telegram_id, title, greeting_enabled, greeting_message, goodbye_enabled, goodbye_message, log_categories) 
+          VALUES ($1, $2, $3, true, 'Welcome {firstname} (ID: {userid}) to the group!', true, 'Goodbye {firstname} (ID: {userid}), see you soon!', '["settings","admin","user","automated","reports","other"]') 
           ON CONFLICT (telegram_id) DO UPDATE SET title = $3`
 	_, err = s.db.Exec(context.Background(), q, id, telegramID, title)
 	if err == nil {

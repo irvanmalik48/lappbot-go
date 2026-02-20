@@ -111,7 +111,7 @@ func (m *Module) handleUnban(c *bot.Context) error {
 		return c.Send("Failed to unban user: " + err.Error())
 	}
 
-	m.Logger.Log(c.Chat().ID, "unban", "Unbanned "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")")
+	m.Logger.Log(c.Chat().ID, "admin", "Unbanned "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")")
 	return c.Send(mention(target)+" unbanned.", "Markdown")
 }
 
@@ -155,7 +155,7 @@ func (m *Module) handleTimedBan(c *bot.Context) error {
 		return c.Send("Error banning user: " + err.Error())
 	}
 
-	m.Logger.Log(c.Chat().ID, "ban", "Timed Ban for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nDuration: "+durationStr+"\nReason: "+reasonStr)
+	m.Logger.Log(c.Chat().ID, "admin", "Timed Ban for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nDuration: "+durationStr+"\nReason: "+reasonStr)
 	return c.Send(mention(target)+" banned for "+durationStr+".\nReason: "+reasonStr, "Markdown")
 }
 
@@ -199,7 +199,7 @@ func (m *Module) handleRealmBan(c *bot.Context) error {
 			"user_id": target.ID,
 		})
 		if err == nil {
-			m.Logger.Log(g.TelegramID, "ban", "Realm Ban for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nReason: "+reasonStr)
+			m.Logger.Log(g.TelegramID, "admin", "Realm Ban for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nReason: "+reasonStr)
 			successCount++
 		} else {
 			failCount++

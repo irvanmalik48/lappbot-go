@@ -139,7 +139,7 @@ func (m *Module) handleTimedMute(c *bot.Context) error {
 		return c.Send("Error muting user: " + err.Error())
 	}
 
-	m.Logger.Log(c.Chat().ID, "mute", "Timed Mute for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nDuration: "+durationStr+"\nReason: "+reasonStr)
+	m.Logger.Log(c.Chat().ID, "admin", "Timed Mute for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nDuration: "+durationStr+"\nReason: "+reasonStr)
 	return c.Send(mention(target)+" muted for "+durationStr+".\nReason: "+reasonStr, "Markdown")
 }
 
@@ -192,7 +192,7 @@ func (m *Module) handleRealmMute(c *bot.Context) error {
 			"until_date":  0,
 		})
 		if err == nil {
-			m.Logger.Log(g.TelegramID, "mute", "Realm Mute for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nReason: "+reasonStr)
+			m.Logger.Log(g.TelegramID, "admin", "Realm Mute for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nReason: "+reasonStr)
 			successCount++
 		} else {
 			failCount++

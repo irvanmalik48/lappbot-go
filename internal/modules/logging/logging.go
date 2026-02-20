@@ -120,9 +120,8 @@ func (m *Module) handleLogCategory(c *bot.Context) error {
 
 	args := c.Args
 	if len(args) == 0 {
-		return c.Send("Usage: /log <category>")
+		return c.Send("Usage: /log <category> [category...]")
 	}
-	category := strings.ToLower(args[0])
 
 	g, err := m.Store.GetGroup(target.ID)
 	if err != nil {
@@ -132,19 +131,67 @@ func (m *Module) handleLogCategory(c *bot.Context) error {
 	var categories []string
 	json.Unmarshal([]byte(g.LogCategories), &categories)
 
-	for _, cat := range categories {
-		if cat == category {
-			return c.Send("Category '" + category + "' is already logged.")
+	validCategories := map[string]bool{
+		"settings": true, "admin": true, "user": true,
+		"automated": true, "reports": true, "other": true,
+	}
+
+	added := []string{}
+	for _, arg := range args {
+		arg = strings.ToLower(arg)
+		if arg == "all" {
+			for cat := range validCategories {
+				exists := false
+				for _, existing := range categories {
+					if existing == cat {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					categories = append(categories, cat)
+					added = append(added, cat)
+				}
+			}
+			break
+		}
+
+		if !validCategories[arg] {
+			continue
+		}
+
+		exists := false
+		for _, cat := range categories {
+			if cat == arg {
+				exists = true
+				break
+			}
+		}
+
+		if !exists {
+			categories = append(categories, arg)
+			added = append(added, arg)
 		}
 	}
 
-	categories = append(categories, category)
+	if len(added) == 0 {
+		return c.Send("No new categories enabled. valid categories: " + strings.Join(getMapKeys(validCategories), ", "))
+	}
+
 	err = m.Store.SetLogCategories(target.ID, categories)
 	if err != nil {
 		return c.Send("Failed to update log categories.")
 	}
 
-	return c.Send("Category '" + category + "' enabled.")
+	return c.Send("Enabled categories: " + strings.Join(added, ", "))
+}
+
+func getMapKeys(m map[string]bool) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 func (m *Module) handleNoLogCategory(c *bot.Context) error {
@@ -158,9 +205,8 @@ func (m *Module) handleNoLogCategory(c *bot.Context) error {
 
 	args := c.Args
 	if len(args) == 0 {
-		return c.Send("Usage: /nolog <category>")
+		return c.Send("Usage: /nolog <category> [category...]")
 	}
-	category := strings.ToLower(args[0])
 
 	g, err := m.Store.GetGroup(target.ID)
 	if err != nil {
@@ -170,26 +216,45 @@ func (m *Module) handleNoLogCategory(c *bot.Context) error {
 	var categories []string
 	json.Unmarshal([]byte(g.LogCategories), &categories)
 
-	newCategories := make([]string, 0)
-	found := false
-	for _, cat := range categories {
-		if cat == category {
-			found = true
-			continue
+	validCategories := map[string]bool{
+		"settings": true, "admin": true, "user": true,
+		"automated": true, "reports": true, "other": true,
+	}
+
+	removed := []string{}
+
+	if strings.ToLower(args[0]) == "all" {
+		categories = []string{}
+		removed = append(removed, "all")
+	} else {
+		toRemove := make(map[string]bool)
+		for _, arg := range args {
+			arg = strings.ToLower(arg)
+			if validCategories[arg] {
+				toRemove[arg] = true
+				removed = append(removed, arg)
+			}
 		}
-		newCategories = append(newCategories, cat)
+
+		newCategories := make([]string, 0)
+		for _, cat := range categories {
+			if !toRemove[cat] {
+				newCategories = append(newCategories, cat)
+			}
+		}
+		categories = newCategories
 	}
 
-	if !found {
-		return c.Send("Category '" + category + "' was not logged.")
+	if len(removed) == 0 {
+		return c.Send("No valid categories to disable. valid categories: " + strings.Join(getMapKeys(validCategories), ", "))
 	}
 
-	err = m.Store.SetLogCategories(target.ID, newCategories)
+	err = m.Store.SetLogCategories(target.ID, categories)
 	if err != nil {
 		return c.Send("Failed to update log categories.")
 	}
 
-	return c.Send("Category '" + category + "' disabled.")
+	return c.Send("Disabled categories: " + strings.Join(removed, ", "))
 }
 
 func (m *Module) handleLogCategories(c *bot.Context) error {
