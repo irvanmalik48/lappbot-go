@@ -88,4 +88,7 @@ unsetlog - Unset Log Channel
 log - Enable Log Category
 nolog - Disable Log Category
 logcategories - List Log Categories
+cleancommand - Add type to clean list
+keepcommand - Remove type from clean list
+cleancommandtypes - List available types
 ```
