@@ -38,6 +38,7 @@ func (m *Module) Register() {
 	m.Bot.Handle("help_conn", m.onHelpCallback)
 	m.Bot.Handle("help_topics", m.onHelpCallback)
 	m.Bot.Handle("help_cursed", m.onHelpCallback)
+	m.Bot.Handle("help_clean", m.onHelpCallback)
 	m.Bot.Handle("help_logging", m.onHelpCallback)
 	m.Bot.Handle("btn_refresh_ping", m.handlePingRefresh)
 	m.Bot.Handle("/report", m.handleReport)
@@ -105,7 +106,7 @@ var helpCache = map[string]struct {
 				{{Text: "Filters", CallbackData: "help_filters"}, {Text: "Warnings", CallbackData: "help_warns"}, {Text: "Admin", CallbackData: "help_admin"}},
 				{{Text: "Realm", CallbackData: "help_realm"}, {Text: "Anti-Spam", CallbackData: "help_antispam"}, {Text: "Purges", CallbackData: "help_purges"}},
 				{{Text: "Notes", CallbackData: "help_notes"}, {Text: "Connection", CallbackData: "help_conn"}, {Text: "Logging", CallbackData: "help_logging"}},
-				{{Text: "Topics", CallbackData: "help_topics"}, {Text: "Cursed", CallbackData: "help_cursed"}},
+				{{Text: "Topics", CallbackData: "help_topics"}, {Text: "Cursed", CallbackData: "help_cursed"}, {Text: "Clean", CallbackData: "help_clean"}},
 			},
 		},
 	},
@@ -116,7 +117,9 @@ var helpCache = map[string]struct {
 /unsetlog - Unset Log Channel
 /log <category> - Enable Log Category
 /nolog <category> - Disable Log Category
-/logcategories - List Log Categories`,
+/logcategories - List Log Categories
+
+Categories: settings, admin, user, automated, reports, other`,
 	},
 	"cursed": {
 		Text: `**Cursed Commands:**
@@ -144,6 +147,14 @@ var helpCache = map[string]struct {
 /notes - List notes
 /clearall - Delete all notes
 /privatenotes - Toggle private mode`,
+	},
+	"clean": {
+		Text: `**Clean Commands:**
+/cleancommand <type> - Add type to clean list
+/keepcommand <type> - Remove type from clean list
+/cleancommandtypes - List available types
+
+Types: settings, admin, user, automated, reports, other, all`,
 	},
 	"conn": {
 		Text: `**Connection Commands:**

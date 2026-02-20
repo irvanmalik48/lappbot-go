@@ -36,6 +36,7 @@ type Group struct {
 	ActionTopicID             *int64
 	LogChannelID              int64
 	LogCategories             string
+	CleanCommands             string
 	CreatedAt                 any
 }
 
@@ -52,7 +53,7 @@ func (s *Store) GetGroup(telegramID int64) (*Group, error) {
 	q := `SELECT id, telegram_id, title, greeting_enabled, greeting_message, goodbye_enabled, goodbye_message, captcha_enabled,
                  antiraid_until, raid_action_time, auto_antiraid_threshold,
                  antiflood_consecutive_limit, antiflood_timer_limit, antiflood_timer_duration, antiflood_action, antiflood_delete,
-                 warn_limit, warn_action, warn_duration, notes_private, action_topic_id, log_channel_id, log_categories
+                 warn_limit, warn_action, warn_duration, notes_private, action_topic_id, log_channel_id, log_categories, clean_commands
           FROM groups WHERE telegram_id = $1`
 
 	var g Group
@@ -61,7 +62,7 @@ func (s *Store) GetGroup(telegramID int64) (*Group, error) {
 		&g.ID, &g.TelegramID, &g.Title, &g.GreetingEnabled, &g.GreetingMessage, &g.GoodbyeEnabled, &g.GoodbyeMessage, &g.CaptchaEnabled,
 		&g.AntiraidUntil, &g.RaidActionTime, &g.AutoAntiraidThreshold,
 		&g.AntifloodConsecutiveLimit, &g.AntifloodTimerLimit, &g.AntifloodTimerDuration, &g.AntifloodAction, &g.AntifloodDelete,
-		&g.WarnLimit, &g.WarnAction, &g.WarnDuration, &g.NotesPrivate, &g.ActionTopicID, &logChannelID, &g.LogCategories,
+		&g.WarnLimit, &g.WarnAction, &g.WarnDuration, &g.NotesPrivate, &g.ActionTopicID, &logChannelID, &g.LogCategories, &g.CleanCommands,
 	)
 	if logChannelID != nil {
 		g.LogChannelID = *logChannelID
@@ -85,8 +86,8 @@ func (s *Store) CreateGroup(telegramID int64, title string) error {
 	if err != nil {
 		return err
 	}
-	q := `INSERT INTO groups (id, telegram_id, title, greeting_enabled, greeting_message, goodbye_enabled, goodbye_message, log_categories) 
-          VALUES ($1, $2, $3, true, 'Welcome {firstname} (ID: {userid}) to the group!', true, 'Goodbye {firstname} (ID: {userid}), see you soon!', '["settings","admin","user","automated","reports","other"]') 
+	q := `INSERT INTO groups (id, telegram_id, title, greeting_enabled, greeting_message, goodbye_enabled, goodbye_message, log_categories, clean_commands) 
+          VALUES ($1, $2, $3, true, 'Welcome {firstname} (ID: {userid}) to the group!', true, 'Goodbye {firstname} (ID: {userid}), see you soon!', '["settings","admin","user","automated","reports","other"]', '[]') 
           ON CONFLICT (telegram_id) DO UPDATE SET title = $3`
 	_, err = s.db.Exec(context.Background(), q, id, telegramID, title)
 	if err == nil {
@@ -242,6 +243,19 @@ func (s *Store) SetNotesPrivate(telegramID int64, enabled bool) error {
 func (s *Store) SetActionTopic(telegramID, topicID int64) error {
 	q := `UPDATE groups SET action_topic_id = $1 WHERE telegram_id = $2`
 	_, err := s.db.Exec(context.Background(), q, topicID, telegramID)
+	if err == nil {
+		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key("group:"+strconv.FormatInt(telegramID, 10)).Build())
+	}
+	return err
+}
+
+func (s *Store) SetCleanCommands(telegramID int64, commands []string) error {
+	data, err := json.Marshal(commands)
+	if err != nil {
+		return err
+	}
+	q := `UPDATE groups SET clean_commands = $1 WHERE telegram_id = $2`
+	_, err = s.db.Exec(context.Background(), q, string(data), telegramID)
 	if err == nil {
 		s.Valkey.Do(context.Background(), s.Valkey.B().Del().Key("group:"+strconv.FormatInt(telegramID, 10)).Build())
 	}
