@@ -79,7 +79,7 @@ func (m *Module) checkCleanCommand(next bot.HandlerFunc) bot.HandlerFunc {
 		}
 
 		g, err := m.Store.GetGroup(target.ID)
-		if err != nil {
+		if err != nil || g == nil {
 			return next(c)
 		}
 
@@ -138,7 +138,7 @@ func (m *Module) handleUnknownCommand(c *bot.Context) error {
 	}
 
 	g, err := m.Store.GetGroup(target.ID)
-	if err != nil {
+	if err != nil || g == nil {
 		return nil
 	}
 
@@ -174,7 +174,7 @@ func (m *Module) handleCleanCommand(c *bot.Context) error {
 	}
 
 	g, err := m.Store.GetGroup(target.ID)
-	if err != nil {
+	if err != nil || g == nil {
 		return c.Send("Error fetching group info.")
 	}
 
@@ -231,7 +231,7 @@ func (m *Module) handleKeepCommand(c *bot.Context) error {
 	}
 
 	g, err := m.Store.GetGroup(target.ID)
-	if err != nil {
+	if err != nil || g == nil {
 		return c.Send("Error fetching group info.")
 	}
 
