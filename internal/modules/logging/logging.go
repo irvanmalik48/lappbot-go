@@ -268,7 +268,6 @@ func (m *Module) Log(chatID int64, category, message string) {
 		return
 	}
 
-	// If no log channel is set, return early
 	if group.LogChannelID == 0 {
 		return
 	}
@@ -291,7 +290,8 @@ func (m *Module) Log(chatID int64, category, message string) {
 	}
 
 	m.Bot.Raw("sendMessage", map[string]any{
-		"chat_id": group.LogChannelID,
-		"text":    "[" + strings.ToUpper(category) + "] " + message,
+		"chat_id":    group.LogChannelID,
+		"text":       "[" + strings.ToUpper(category) + "] " + message,
+		"parse_mode": "Markdown",
 	})
 }
