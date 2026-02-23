@@ -70,7 +70,11 @@ func (m *Module) checkPunish(c *bot.Context, targetChat *bot.Chat, target *bot.U
 		return err
 	}
 	if group == nil {
-		return c.Send("Group settings not found.")
+		m.Store.CreateGroup(targetChat.ID, targetChat.Title)
+		group, _ = m.Store.GetGroup(targetChat.ID)
+		if group == nil {
+			return c.Send("Failed to initialize group settings.")
+		}
 	}
 
 	var since time.Time
@@ -228,7 +232,11 @@ func (m *Module) handleWarnings(c *bot.Context) error {
 		return err
 	}
 	if group == nil {
-		return c.Send("Group settings not found.")
+		m.Store.CreateGroup(c.Chat().ID, c.Chat().Title)
+		group, _ = m.Store.GetGroup(c.Chat().ID)
+		if group == nil {
+			return c.Send("Failed to initialize group settings.")
+		}
 	}
 
 	msg := "**Warnings Settings:**\nLimit: " + strconv.Itoa(group.WarnLimit) + "\nAction: " + group.WarnAction + "\nDuration: " + group.WarnDuration
@@ -294,7 +302,11 @@ func (m *Module) handleMyWarns(c *bot.Context) error {
 		return err
 	}
 	if group == nil {
-		return c.Send("Group settings not found.")
+		m.Store.CreateGroup(c.Chat().ID, c.Chat().Title)
+		group, _ = m.Store.GetGroup(c.Chat().ID)
+		if group == nil {
+			return c.Send("Failed to initialize group settings.")
+		}
 	}
 
 	var since time.Time
