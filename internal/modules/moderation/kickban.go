@@ -16,14 +16,19 @@ func (m *Module) handleSilentKick(c *bot.Context) error {
 }
 
 func (m *Module) kickUser(c *bot.Context, silent bool) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to kick them.")
 	}
 	target := c.Message.ReplyTo.From
-	if m.Bot.IsAdmin(c.Chat(), target) {
+	if m.Bot.IsAdmin(targetChat, target) {
 		return c.Send("Cannot kick an admin.")
 	}
 
@@ -33,8 +38,8 @@ func (m *Module) kickUser(c *bot.Context, silent bool) error {
 		reasonStr = strings.Join(reason, " ")
 	}
 
-	err := m.Bot.Raw("unbanChatMember", map[string]any{
-		"chat_id": c.Chat().ID,
+	err = m.Bot.Raw("unbanChatMember", map[string]any{
+		"chat_id": targetChat.ID,
 		"user_id": target.ID,
 	})
 	if err != nil {
@@ -45,7 +50,7 @@ func (m *Module) kickUser(c *bot.Context, silent bool) error {
 		c.Delete()
 		return nil
 	}
-	m.Logger.Log(c.Chat().ID, "admin", "Kicked "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nReason: "+reasonStr)
+	m.Logger.Log(targetChat.ID, "admin", "Kicked "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nReason: "+reasonStr)
 	return c.Send(mention(target)+" kicked.\nReason: "+reasonStr, "Markdown")
 }
 
@@ -58,14 +63,19 @@ func (m *Module) handleSilentBan(c *bot.Context) error {
 }
 
 func (m *Module) banUser(c *bot.Context, silent bool) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to ban them.")
 	}
 	target := c.Message.ReplyTo.From
-	if m.Bot.IsAdmin(c.Chat(), target) {
+	if m.Bot.IsAdmin(targetChat, target) {
 		return c.Send("Cannot ban an admin.")
 	}
 
@@ -75,10 +85,10 @@ func (m *Module) banUser(c *bot.Context, silent bool) error {
 		reasonStr = strings.Join(reason, " ")
 	}
 
-	m.Store.BanUser(target.ID, c.Chat().ID, time.Time{}, reasonStr, c.Sender().ID, "ban")
+	m.Store.BanUser(target.ID, targetChat.ID, time.Time{}, reasonStr, c.Sender().ID, "ban")
 
-	err := m.Bot.Raw("banChatMember", map[string]any{
-		"chat_id": c.Chat().ID,
+	err = m.Bot.Raw("banChatMember", map[string]any{
+		"chat_id": targetChat.ID,
 		"user_id": target.ID,
 	})
 	if err != nil {
@@ -89,12 +99,17 @@ func (m *Module) banUser(c *bot.Context, silent bool) error {
 		c.Delete()
 		return nil
 	}
-	m.Logger.Log(c.Chat().ID, "admin", "Banned "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nReason: "+reasonStr)
+	m.Logger.Log(targetChat.ID, "admin", "Banned "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nReason: "+reasonStr)
 	return c.Send(mention(target)+" banned.\nReason: "+reasonStr, "Markdown")
 }
 
 func (m *Module) handleUnban(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
@@ -102,8 +117,8 @@ func (m *Module) handleUnban(c *bot.Context) error {
 	}
 	target := c.Message.ReplyTo.From
 
-	err := m.Bot.Raw("unbanChatMember", map[string]any{
-		"chat_id":        c.Chat().ID,
+	err = m.Bot.Raw("unbanChatMember", map[string]any{
+		"chat_id":        targetChat.ID,
 		"user_id":        target.ID,
 		"only_if_banned": true,
 	})
@@ -111,12 +126,17 @@ func (m *Module) handleUnban(c *bot.Context) error {
 		return c.Send("Failed to unban user: " + err.Error())
 	}
 
-	m.Logger.Log(c.Chat().ID, "admin", "Unbanned "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")")
+	m.Logger.Log(targetChat.ID, "admin", "Unbanned "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")")
 	return c.Send(mention(target)+" unbanned.", "Markdown")
 }
 
 func (m *Module) handleTimedBan(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return nil
 	}
 
@@ -128,7 +148,7 @@ func (m *Module) handleTimedBan(c *bot.Context) error {
 		return c.Send("Reply to a user to ban them.")
 	}
 	target := c.Message.ReplyTo.From
-	if m.Bot.IsAdmin(c.Chat(), target) {
+	if m.Bot.IsAdmin(targetChat, target) {
 		return c.Send("Cannot ban an admin.")
 	}
 
@@ -144,10 +164,10 @@ func (m *Module) handleTimedBan(c *bot.Context) error {
 		reasonStr = strings.Join(args[1:], " ")
 	}
 
-	m.Store.BanUser(target.ID, c.Chat().ID, until, reasonStr, c.Sender().ID, "ban")
+	m.Store.BanUser(target.ID, targetChat.ID, until, reasonStr, c.Sender().ID, "ban")
 
 	err = m.Bot.Raw("banChatMember", map[string]any{
-		"chat_id":    c.Chat().ID,
+		"chat_id":    targetChat.ID,
 		"user_id":    target.ID,
 		"until_date": until.Unix(),
 	})
@@ -155,12 +175,17 @@ func (m *Module) handleTimedBan(c *bot.Context) error {
 		return c.Send("Error banning user: " + err.Error())
 	}
 
-	m.Logger.Log(c.Chat().ID, "admin", "Timed Ban for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nDuration: "+durationStr+"\nReason: "+reasonStr)
+	m.Logger.Log(targetChat.ID, "admin", "Timed Ban for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nDuration: "+durationStr+"\nReason: "+reasonStr)
 	return c.Send(mention(target)+" banned for "+durationStr+".\nReason: "+reasonStr, "Markdown")
 }
 
 func (m *Module) handleRealmBan(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return nil
 	}
 
@@ -173,7 +198,7 @@ func (m *Module) handleRealmBan(c *bot.Context) error {
 	}
 	target := c.Message.ReplyTo.From
 
-	if m.Bot.IsAdmin(c.Chat(), target) {
+	if m.Bot.IsAdmin(targetChat, target) {
 		return c.Send("Cannot realm ban an admin of this group.")
 	}
 

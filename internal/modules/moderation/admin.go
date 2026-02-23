@@ -7,7 +7,12 @@ import (
 )
 
 func (m *Module) handleApprove(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
@@ -15,23 +20,28 @@ func (m *Module) handleApprove(c *bot.Context) error {
 	}
 	target := c.Message.ReplyTo.From
 
-	err := m.Store.AddApprovedUser(target.ID, c.Chat().ID, c.Sender().ID)
+	err = m.Store.AddApprovedUser(target.ID, targetChat.ID, c.Sender().ID)
 	if err != nil {
 		return c.Send("Failed to approve user: " + err.Error())
 	}
 
 	m.BlacklistCache.Lock()
-	if m.BlacklistCache.ApprovedUsers[c.Chat().ID] == nil {
-		m.BlacklistCache.ApprovedUsers[c.Chat().ID] = make(map[int64]struct{})
+	if m.BlacklistCache.ApprovedUsers[targetChat.ID] == nil {
+		m.BlacklistCache.ApprovedUsers[targetChat.ID] = make(map[int64]struct{})
 	}
-	m.BlacklistCache.ApprovedUsers[c.Chat().ID][target.ID] = struct{}{}
+	m.BlacklistCache.ApprovedUsers[targetChat.ID][target.ID] = struct{}{}
 	m.BlacklistCache.Unlock()
 
 	return c.Send(mention(target)+" is now approved.", "Markdown")
 }
 
 func (m *Module) handleUnapprove(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
@@ -39,17 +49,22 @@ func (m *Module) handleUnapprove(c *bot.Context) error {
 	}
 	target := c.Message.ReplyTo.From
 
-	err := m.Store.RemoveApprovedUser(target.ID, c.Chat().ID)
+	err = m.Store.RemoveApprovedUser(target.ID, targetChat.ID)
 	if err != nil {
 		return c.Send("Failed to unapprove user: " + err.Error())
 	}
 
-	m.Logger.Log(c.Chat().ID, "admin", "Unapproved "+target.FirstName+" (ID: "+strconv.FormatInt(target.ID, 10)+") by "+c.Sender().FirstName)
+	m.Logger.Log(targetChat.ID, "admin", "Unapproved "+target.FirstName+" (ID: "+strconv.FormatInt(target.ID, 10)+") by "+c.Sender().FirstName)
 	return c.Send("Unapproved " + mention(target) + ".")
 }
 
 func (m *Module) handlePromote(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return c.Send("You must be an admin to use this command.")
 	}
 	if c.Message.ReplyTo == nil {
@@ -64,7 +79,7 @@ func (m *Module) handlePromote(c *bot.Context) error {
 	}
 
 	params := map[string]any{
-		"chat_id":                c.Chat().ID,
+		"chat_id":                targetChat.ID,
 		"user_id":                target.ID,
 		"is_anonymous":           false,
 		"can_manage_chat":        true,
@@ -79,24 +94,29 @@ func (m *Module) handlePromote(c *bot.Context) error {
 		"can_pin_messages":       true,
 	}
 
-	err := m.Bot.Raw("promoteChatMember", params)
+	err = m.Bot.Raw("promoteChatMember", params)
 	if err != nil {
 		return c.Send("Failed to promote user: " + err.Error())
 	}
 
 	m.Bot.Raw("setChatAdministratorCustomTitle", map[string]any{
-		"chat_id":      c.Chat().ID,
+		"chat_id":      targetChat.ID,
 		"user_id":      target.ID,
 		"custom_title": title,
 	})
 
-	m.Bot.InvalidateAdminCache(c.Chat().ID, target.ID)
-	m.Logger.Log(c.Chat().ID, "admin", "Promoted "+target.FirstName+" to admin ("+title+") by "+c.Sender().FirstName)
+	m.Bot.InvalidateAdminCache(targetChat.ID, target.ID)
+	m.Logger.Log(targetChat.ID, "admin", "Promoted "+target.FirstName+" to admin ("+title+") by "+c.Sender().FirstName)
 	return c.Send(mention(target)+" promoted to admin with title '"+title+"'.", "Markdown")
 }
 
 func (m *Module) handleDemote(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return c.Send("You must be an admin to use this command.")
 	}
 	if c.Message.ReplyTo == nil {
@@ -105,7 +125,7 @@ func (m *Module) handleDemote(c *bot.Context) error {
 	target := c.Message.ReplyTo.From
 
 	params := map[string]any{
-		"chat_id":                c.Chat().ID,
+		"chat_id":                targetChat.ID,
 		"user_id":                target.ID,
 		"is_anonymous":           false,
 		"can_manage_chat":        false,
@@ -120,11 +140,11 @@ func (m *Module) handleDemote(c *bot.Context) error {
 		"can_pin_messages":       false,
 	}
 
-	err := m.Bot.Raw("promoteChatMember", params)
+	err = m.Bot.Raw("promoteChatMember", params)
 	if err != nil {
 		return c.Send("Failed to demote user: " + err.Error())
 	}
 
-	m.Bot.InvalidateAdminCache(c.Chat().ID, target.ID)
+	m.Bot.InvalidateAdminCache(targetChat.ID, target.ID)
 	return c.Send(mention(target)+" demoted to member.", "Markdown")
 }

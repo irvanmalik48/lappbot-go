@@ -12,7 +12,12 @@ import (
 )
 
 func (m *Module) handleBlacklistAdd(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return nil
 	}
 
@@ -40,23 +45,28 @@ func (m *Module) handleBlacklistAdd(c *bot.Context) error {
 		return c.Send("Invalid action. Use: delete, soft_warn, hard_warn, kick, mute, ban")
 	}
 
-	err := m.Store.AddBlacklistItem(c.Chat().ID, kind, value, action, duration)
+	err = m.Store.AddBlacklistItem(targetChat.ID, kind, value, action, duration)
 	if err != nil {
 		return c.Send("Failed to add blacklist item: " + err.Error())
 	}
 
 	m.BlacklistCache.Lock()
-	delete(m.BlacklistCache.Regexes, c.Chat().ID)
-	delete(m.BlacklistCache.StickerSets, c.Chat().ID)
-	delete(m.BlacklistCache.Emojis, c.Chat().ID)
+	delete(m.BlacklistCache.Regexes, targetChat.ID)
+	delete(m.BlacklistCache.StickerSets, targetChat.ID)
+	delete(m.BlacklistCache.Emojis, targetChat.ID)
 	m.BlacklistCache.Unlock()
 
-	m.Logger.Log(c.Chat().ID, "admin", "Blacklisted "+kind+": "+value+" (Action: "+action+") by "+c.Sender().FirstName)
+	m.Logger.Log(targetChat.ID, "admin", "Blacklisted "+kind+": "+value+" (Action: "+action+") by "+c.Sender().FirstName)
 	return c.Send("Blacklisted " + kind + ": " + value + " (Action: " + action + ")")
 }
 
 func (m *Module) handleBlacklistRemove(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return nil
 	}
 
@@ -68,23 +78,28 @@ func (m *Module) handleBlacklistRemove(c *bot.Context) error {
 	kind := strings.ToLower(args[0])
 	value := args[1]
 
-	err := m.Store.RemoveBlacklistItem(c.Chat().ID, kind, value)
+	err = m.Store.RemoveBlacklistItem(targetChat.ID, kind, value)
 	if err != nil {
 		return c.Send("Failed to remove blacklist item: " + err.Error())
 	}
 
 	m.BlacklistCache.Lock()
-	delete(m.BlacklistCache.Regexes, c.Chat().ID)
-	delete(m.BlacklistCache.StickerSets, c.Chat().ID)
-	delete(m.BlacklistCache.Emojis, c.Chat().ID)
+	delete(m.BlacklistCache.Regexes, targetChat.ID)
+	delete(m.BlacklistCache.StickerSets, targetChat.ID)
+	delete(m.BlacklistCache.Emojis, targetChat.ID)
 	m.BlacklistCache.Unlock()
 
-	m.Logger.Log(c.Chat().ID, "admin", "Removed "+kind+" from blacklist: "+value+" by "+c.Sender().FirstName)
+	m.Logger.Log(targetChat.ID, "admin", "Removed "+kind+" from blacklist: "+value+" by "+c.Sender().FirstName)
 	return c.Send("Removed " + kind + " from blacklist: " + value)
 }
 
 func (m *Module) handleBlacklistList(c *bot.Context) error {
-	items, err := m.Store.GetBlacklist(c.Chat().ID)
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	items, err := m.Store.GetBlacklist(targetChat.ID)
 	if err != nil {
 		return c.Send("Failed to fetch blacklist: " + err.Error())
 	}

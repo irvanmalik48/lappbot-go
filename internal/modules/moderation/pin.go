@@ -5,22 +5,27 @@ import (
 )
 
 func (m *Module) handlePin(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a message to pin/unpin it.")
 	}
 
-	err := m.Bot.Raw("pinChatMessage", map[string]any{
-		"chat_id":    c.Chat().ID,
+	err = m.Bot.Raw("pinChatMessage", map[string]any{
+		"chat_id":    targetChat.ID,
 		"message_id": c.Message.ReplyTo.ID,
 	})
 	if err != nil {
 		return c.Send("Failed to pin message.")
 	}
 
-	m.Logger.Log(c.Chat().ID, "admin", "Message pinned by "+c.Sender().FirstName)
+	m.Logger.Log(targetChat.ID, "admin", "Message pinned by "+c.Sender().FirstName)
 
 	return nil
 }

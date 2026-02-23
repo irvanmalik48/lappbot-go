@@ -16,14 +16,19 @@ func (m *Module) handleSilentMute(c *bot.Context) error {
 }
 
 func (m *Module) muteUser(c *bot.Context, silent bool) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to mute them.")
 	}
 	target := c.Message.ReplyTo.From
-	if m.Bot.IsAdmin(c.Chat(), target) {
+	if m.Bot.IsAdmin(targetChat, target) {
 		return c.Send("Cannot mute an admin.")
 	}
 
@@ -33,7 +38,7 @@ func (m *Module) muteUser(c *bot.Context, silent bool) error {
 		reasonStr = strings.Join(reason, " ")
 	}
 
-	m.Store.BanUser(target.ID, c.Chat().ID, time.Time{}, reasonStr, c.Sender().ID, "mute")
+	m.Store.BanUser(target.ID, targetChat.ID, time.Time{}, reasonStr, c.Sender().ID, "mute")
 
 	permissions := map[string]bool{
 		"can_send_messages":       false,
@@ -42,8 +47,8 @@ func (m *Module) muteUser(c *bot.Context, silent bool) error {
 		"can_send_other_messages": false,
 	}
 
-	err := m.Bot.Raw("restrictChatMember", map[string]any{
-		"chat_id":     c.Chat().ID,
+	err = m.Bot.Raw("restrictChatMember", map[string]any{
+		"chat_id":     targetChat.ID,
 		"user_id":     target.ID,
 		"permissions": permissions,
 		"until_date":  0,
@@ -56,12 +61,17 @@ func (m *Module) muteUser(c *bot.Context, silent bool) error {
 		c.Delete()
 		return nil
 	}
-	m.Logger.Log(c.Chat().ID, "admin", "Muted "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nReason: "+reasonStr)
+	m.Logger.Log(targetChat.ID, "admin", "Muted "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nReason: "+reasonStr)
 	return c.Send(mention(target)+" muted.\nReason: "+reasonStr, "Markdown")
 }
 
 func (m *Module) handleUnmute(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
@@ -78,8 +88,8 @@ func (m *Module) handleUnmute(c *bot.Context) error {
 		"can_invite_users":          true,
 	}
 
-	err := m.Bot.Raw("restrictChatMember", map[string]any{
-		"chat_id":     c.Chat().ID,
+	err = m.Bot.Raw("restrictChatMember", map[string]any{
+		"chat_id":     targetChat.ID,
 		"user_id":     target.ID,
 		"permissions": permissions,
 	})
@@ -87,12 +97,17 @@ func (m *Module) handleUnmute(c *bot.Context) error {
 		return c.Send("Failed to unmute user: " + err.Error())
 	}
 
-	m.Logger.Log(c.Chat().ID, "admin", "Unmuted "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")")
+	m.Logger.Log(targetChat.ID, "admin", "Unmuted "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")")
 	return c.Send(mention(target)+" unmuted.", "Markdown")
 }
 
 func (m *Module) handleTimedMute(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return nil
 	}
 
@@ -104,7 +119,7 @@ func (m *Module) handleTimedMute(c *bot.Context) error {
 		return c.Send("Reply to a user to mute them.")
 	}
 	target := c.Message.ReplyTo.From
-	if m.Bot.IsAdmin(c.Chat(), target) {
+	if m.Bot.IsAdmin(targetChat, target) {
 		return c.Send("Cannot mute an admin.")
 	}
 
@@ -120,7 +135,7 @@ func (m *Module) handleTimedMute(c *bot.Context) error {
 		reasonStr = strings.Join(args[1:], " ")
 	}
 
-	m.Store.BanUser(target.ID, c.Chat().ID, until, reasonStr, c.Sender().ID, "mute")
+	m.Store.BanUser(target.ID, targetChat.ID, until, reasonStr, c.Sender().ID, "mute")
 
 	permissions := map[string]bool{
 		"can_send_messages":       false,
@@ -130,7 +145,7 @@ func (m *Module) handleTimedMute(c *bot.Context) error {
 	}
 
 	err = m.Bot.Raw("restrictChatMember", map[string]any{
-		"chat_id":     c.Chat().ID,
+		"chat_id":     targetChat.ID,
 		"user_id":     target.ID,
 		"permissions": permissions,
 		"until_date":  until.Unix(),
@@ -139,12 +154,17 @@ func (m *Module) handleTimedMute(c *bot.Context) error {
 		return c.Send("Error muting user: " + err.Error())
 	}
 
-	m.Logger.Log(c.Chat().ID, "admin", "Timed Mute for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nDuration: "+durationStr+"\nReason: "+reasonStr)
+	m.Logger.Log(targetChat.ID, "admin", "Timed Mute for "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nDuration: "+durationStr+"\nReason: "+reasonStr)
 	return c.Send(mention(target)+" muted for "+durationStr+".\nReason: "+reasonStr, "Markdown")
 }
 
 func (m *Module) handleRealmMute(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return nil
 	}
 
@@ -157,7 +177,7 @@ func (m *Module) handleRealmMute(c *bot.Context) error {
 	}
 	target := c.Message.ReplyTo.From
 
-	if m.Bot.IsAdmin(c.Chat(), target) {
+	if m.Bot.IsAdmin(targetChat, target) {
 		return c.Send("Cannot realm mute an admin of this group.")
 	}
 

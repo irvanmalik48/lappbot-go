@@ -5,7 +5,12 @@ import (
 )
 
 func (m *Module) handleLock(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return nil
 	}
 
@@ -16,20 +21,25 @@ func (m *Module) handleLock(c *bot.Context) error {
 		"can_send_other_messages": false,
 	}
 
-	err := m.Bot.Raw("setChatPermissions", map[string]any{
-		"chat_id":     c.Chat().ID,
+	err = m.Bot.Raw("setChatPermissions", map[string]any{
+		"chat_id":     targetChat.ID,
 		"permissions": permissions,
 	})
 	if err != nil {
 		return c.Send("Failed to lock group.")
 	}
 
-	m.Logger.Log(c.Chat().ID, "admin", "Group locked by "+c.Sender().FirstName)
+	m.Logger.Log(targetChat.ID, "admin", "Group locked by "+c.Sender().FirstName)
 	return c.Send("Group locked.")
 }
 
 func (m *Module) handleUnlock(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return c.Send("You must be an admin to use this command.")
 	}
 
@@ -42,14 +52,14 @@ func (m *Module) handleUnlock(c *bot.Context) error {
 		"can_invite_users":          true,
 	}
 
-	err := m.Bot.Raw("setChatPermissions", map[string]any{
-		"chat_id":     c.Chat().ID,
+	err = m.Bot.Raw("setChatPermissions", map[string]any{
+		"chat_id":     targetChat.ID,
 		"permissions": permissions,
 	})
 	if err != nil {
 		return c.Send("Failed to unlock group.")
 	}
 
-	m.Logger.Log(c.Chat().ID, "admin", "Group unlocked by "+c.Sender().FirstName)
+	m.Logger.Log(targetChat.ID, "admin", "Group unlocked by "+c.Sender().FirstName)
 	return c.Send("Group unlocked.")
 }

@@ -20,7 +20,12 @@ func (m *Module) handleSWarn(c *bot.Context) error {
 }
 
 func (m *Module) warnUser(c *bot.Context, deleteMessage, silent bool) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
@@ -28,7 +33,7 @@ func (m *Module) warnUser(c *bot.Context, deleteMessage, silent bool) error {
 	}
 
 	target := c.Message.ReplyTo.From
-	if m.Bot.IsAdmin(c.Chat(), target) {
+	if m.Bot.IsAdmin(targetChat, target) {
 		return c.Send("Cannot warn an admin.")
 	}
 
@@ -38,26 +43,26 @@ func (m *Module) warnUser(c *bot.Context, deleteMessage, silent bool) error {
 		reasonStr = strings.Join(reason, " ")
 	}
 
-	_, err := m.Store.AddWarn(target.ID, c.Chat().ID, reasonStr, c.Sender().ID)
+	_, err = m.Store.AddWarn(target.ID, targetChat.ID, reasonStr, c.Sender().ID)
 	if err != nil {
 		return c.Send("Error adding warn: " + err.Error())
 	}
 
-	m.Logger.Log(c.Chat().ID, "admin", "Warned "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nReason: "+reasonStr)
+	m.Logger.Log(targetChat.ID, "admin", "Warned "+mention(target)+" (ID: "+strconv.FormatInt(target.ID, 10)+")\nReason: "+reasonStr)
 
 	if deleteMessage {
 		m.Bot.Raw("deleteMessage", map[string]any{
-			"chat_id":    c.Chat().ID,
+			"chat_id":    targetChat.ID,
 			"message_id": c.Message.ReplyTo.ID,
 		})
 		c.Delete()
 	}
 
-	return m.checkPunish(c, target, reasonStr, silent)
+	return m.checkPunish(c, targetChat, target, reasonStr, silent)
 }
 
-func (m *Module) checkPunish(c *bot.Context, target *bot.User, reason string, silent bool) error {
-	group, err := m.Store.GetGroup(c.Chat().ID)
+func (m *Module) checkPunish(c *bot.Context, targetChat *bot.Chat, target *bot.User, reason string, silent bool) error {
+	group, err := m.Store.GetGroup(targetChat.ID)
 	if err != nil {
 		return err
 	}
@@ -70,7 +75,7 @@ func (m *Module) checkPunish(c *bot.Context, target *bot.User, reason string, si
 		}
 	}
 
-	count, err := m.Store.GetActiveWarns(target.ID, c.Chat().ID, since)
+	count, err := m.Store.GetActiveWarns(target.ID, targetChat.ID, since)
 	if err != nil {
 		return err
 	}
@@ -78,7 +83,7 @@ func (m *Module) checkPunish(c *bot.Context, target *bot.User, reason string, si
 	msg := "User " + mention(target) + " has been warned.\nReason: " + reason + "\nTotal Warns: " + strconv.Itoa(count) + "/" + strconv.Itoa(group.WarnLimit)
 
 	if count >= group.WarnLimit {
-		m.Store.ResetWarns(target.ID, c.Chat().ID)
+		m.Store.ResetWarns(target.ID, targetChat.ID)
 
 		var err error
 		action := group.WarnAction
