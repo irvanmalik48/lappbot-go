@@ -155,8 +155,13 @@ func (m *Module) OnUserJoined(c *bot.Context) error {
 }
 
 func (m *Module) handleCaptchaCommand(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
-		return c.Send("You must be an admin to use this command.")
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+		return nil
 	}
 
 	args := c.Args
@@ -166,18 +171,18 @@ func (m *Module) handleCaptchaCommand(c *bot.Context) error {
 
 	switch args[0] {
 	case "on":
-		err := m.Store.UpdateGroupCaptcha(c.Chat().ID, true)
+		err := m.Store.UpdateGroupCaptcha(targetChat.ID, true)
 		if err != nil {
 			return c.Send("Error: " + err.Error())
 		}
-		m.Logger.Log(c.Chat().ID, "settings", "Captcha enabled by "+c.Sender().FirstName)
+		m.Logger.Log(targetChat.ID, "settings", "Captcha enabled by "+c.Sender().FirstName)
 		return c.Send("CAPTCHA enabled.")
 	case "off":
-		err := m.Store.UpdateGroupCaptcha(c.Chat().ID, false)
+		err := m.Store.UpdateGroupCaptcha(targetChat.ID, false)
 		if err != nil {
 			return c.Send("Error: " + err.Error())
 		}
-		m.Logger.Log(c.Chat().ID, "settings", "Captcha disabled by "+c.Sender().FirstName)
+		m.Logger.Log(targetChat.ID, "settings", "Captcha disabled by "+c.Sender().FirstName)
 		return c.Send("CAPTCHA disabled.")
 	default:
 		return c.Send("Usage: /captcha <on|off>")

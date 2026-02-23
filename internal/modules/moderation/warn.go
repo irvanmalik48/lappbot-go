@@ -25,7 +25,7 @@ func (m *Module) warnUser(c *bot.Context, deleteMessage, silent bool) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
@@ -155,7 +155,7 @@ func (m *Module) checkPunish(c *bot.Context, targetChat *bot.Chat, target *bot.U
 }
 
 func (m *Module) handleRmWarn(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender()) {
 		return nil
 	}
 
@@ -179,7 +179,7 @@ func (m *Module) handleRmWarn(c *bot.Context) error {
 }
 
 func (m *Module) handleResetWarns(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender()) {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
@@ -196,7 +196,7 @@ func (m *Module) handleResetWarns(c *bot.Context) error {
 }
 
 func (m *Module) handleResetAllWarns(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender()) {
 		return nil
 	}
 	err := m.Store.ResetAllWarns(c.Chat().ID)
@@ -218,7 +218,7 @@ func (m *Module) handleWarnings(c *bot.Context) error {
 }
 
 func (m *Module) handleWarnMode(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender()) {
 		return nil
 	}
 	args := c.Args
@@ -232,7 +232,7 @@ func (m *Module) handleWarnMode(c *bot.Context) error {
 }
 
 func (m *Module) handleWarnLimit(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender()) {
 		return nil
 	}
 	args := c.Args
@@ -250,7 +250,7 @@ func (m *Module) handleWarnLimit(c *bot.Context) error {
 }
 
 func (m *Module) handleWarnTime(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender()) {
 		return nil
 	}
 	args := c.Args
@@ -292,8 +292,8 @@ func (m *Module) handleMyWarns(c *bot.Context) error {
 }
 
 func (m *Module) onRemoveWarnBtn(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
-		return c.Respond("Admins only.")
+	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender()) {
+		return nil
 	}
 
 	parts := strings.Split(c.Data(), "|")

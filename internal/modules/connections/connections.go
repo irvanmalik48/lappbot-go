@@ -31,8 +31,8 @@ func (m *Module) handleConnect(c *bot.Context) error {
 	args := c.Args
 
 	if c.Chat().Type != "private" {
-		if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
-			return c.Send("You must be an admin to connect.")
+		if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender()) {
+			return nil
 		}
 		err := m.Store.SetConnection(c.Sender().ID, c.Chat().ID)
 		if err != nil {
@@ -49,8 +49,8 @@ func (m *Module) handleConnect(c *bot.Context) error {
 			return c.Send("Chat not found. Make sure the bot is in the chat or use the correct ID.")
 		}
 
-		if !m.Bot.IsAdmin(chat, c.Sender()) {
-			return c.Send("You must be an admin of that chat to connect.")
+		if !m.Bot.CheckAdmin(c, chat, c.Sender()) {
+			return nil
 		}
 
 		err = m.Store.SetConnection(c.Sender().ID, chat.ID)
@@ -102,8 +102,7 @@ func (m *Module) onConnectCallback(c *bot.Context) error {
 		return nil
 	}
 
-	if !m.Bot.IsAdmin(chat, c.Sender()) {
-		c.Respond("You must be an admin of that chat.")
+	if !m.Bot.CheckAdmin(c, chat, c.Sender()) {
 		return nil
 	}
 
@@ -140,8 +139,8 @@ func (m *Module) handleReconnect(c *bot.Context) error {
 		return c.Send("Previous chat not found.")
 	}
 
-	if !m.Bot.IsAdmin(chat, c.Sender()) {
-		return c.Send("You must be an admin of that chat.")
+	if !m.Bot.CheckAdmin(c, chat, c.Sender()) {
+		return nil
 	}
 
 	err = m.Store.SetConnection(c.Sender().ID, last.ChatID)

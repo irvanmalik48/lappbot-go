@@ -17,7 +17,7 @@ func (m *Module) handleBlacklistAdd(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
 		return nil
 	}
 
@@ -66,7 +66,7 @@ func (m *Module) handleBlacklistRemove(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
 		return nil
 	}
 

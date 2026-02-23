@@ -171,7 +171,16 @@ func (m *Module) takeAction(c *bot.Context, group *store.Group) {
 }
 
 func (m *Module) handleFlood(c *bot.Context) error {
-	group, err := m.Store.GetGroup(c.Chat().ID)
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+		return nil
+	}
+
+	group, err := m.Store.GetGroup(targetChat.ID)
 	if err != nil {
 		return err
 	}

@@ -12,7 +12,7 @@ func (m *Module) handleApprove(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
@@ -41,7 +41,7 @@ func (m *Module) handleUnapprove(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
@@ -64,8 +64,8 @@ func (m *Module) handlePromote(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
-		return c.Send("You must be an admin to use this command.")
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+		return nil
 	}
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to promote them.")
@@ -116,8 +116,8 @@ func (m *Module) handleDemote(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
-		return c.Send("You must be an admin to use this command.")
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+		return nil
 	}
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to demote them.")

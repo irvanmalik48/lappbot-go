@@ -21,7 +21,7 @@ func (m *Module) kickUser(c *bot.Context, silent bool) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
@@ -68,7 +68,7 @@ func (m *Module) banUser(c *bot.Context, silent bool) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
@@ -109,7 +109,7 @@ func (m *Module) handleUnban(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
@@ -136,7 +136,7 @@ func (m *Module) handleTimedBan(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
 		return nil
 	}
 
@@ -185,7 +185,7 @@ func (m *Module) handleRealmBan(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
 		return nil
 	}
 

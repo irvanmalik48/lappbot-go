@@ -10,7 +10,7 @@ func (m *Module) handleLock(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
 		return nil
 	}
 
@@ -39,8 +39,8 @@ func (m *Module) handleUnlock(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.IsAdmin(targetChat, c.Sender()) {
-		return c.Send("You must be an admin to use this command.")
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+		return nil
 	}
 
 	permissions := map[string]bool{

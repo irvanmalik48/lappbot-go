@@ -30,33 +30,42 @@ func (m *Module) Register() {
 }
 
 func (m *Module) handleUserJoined(c *bot.Context) error {
-	group, err := m.Store.GetGroup(c.Chat().ID)
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+		return nil
+	}
+
+	group, err := m.Store.GetGroup(targetChat.ID)
 	if err != nil || group == nil {
 		return nil
 	}
 
 	if group.AntiraidUntil != nil && group.AntiraidUntil.After(time.Now()) {
 		for _, u := range c.Update.Message.NewChatMembers {
-			m.banUserRaw(c.Chat().ID, u.ID, group.RaidActionTime)
-			m.Logger.Log(c.Chat().ID, "automated", "Antiraid banned user: "+u.FirstName+" (ID: "+strconv.FormatInt(u.ID, 10)+")")
+			m.banUserRaw(targetChat.ID, u.ID, group.RaidActionTime)
+			m.Logger.Log(targetChat.ID, "automated", "Antiraid banned user: "+u.FirstName+" (ID: "+strconv.FormatInt(u.ID, 10)+")")
 		}
 		return nil
 	}
 
 	if group.AutoAntiraidThreshold > 0 {
-		key := "antiraid:joins:" + strconv.FormatInt(c.Chat().ID, 10) + ":" + strconv.FormatInt(time.Now().Unix()/60, 10)
+		key := "antiraid:joins:" + strconv.FormatInt(targetChat.ID, 10) + ":" + strconv.FormatInt(time.Now().Unix()/60, 10)
 		val, _ := m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Incr().Key(key).Build()).AsInt64()
 		m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Expire().Key(key).Seconds(65).Build())
 
 		if val >= int64(group.AutoAntiraidThreshold) {
 			until := time.Now().Add(6 * time.Hour)
-			m.Store.SetAntiraidUntil(c.Chat().ID, &until)
+			m.Store.SetAntiraidUntil(targetChat.ID, &until)
 			c.Send("🚨 **ANTI-RAID AUTOMATICALLY ENABLED** 🚨\nMore than "+strconv.Itoa(group.AutoAntiraidThreshold)+" joins in the last minute.\nAnti-raid enabled for 6 hours.", "Markdown")
-			m.Logger.Log(c.Chat().ID, "automated", "Auto-Antiraid triggered. Threshold: "+strconv.Itoa(group.AutoAntiraidThreshold)+". Enabled for 6h.")
+			m.Logger.Log(targetChat.ID, "automated", "Auto-Antiraid triggered. Threshold: "+strconv.Itoa(group.AutoAntiraidThreshold)+". Enabled for 6h.")
 
 			for _, u := range c.Update.Message.NewChatMembers {
-				m.banUserRaw(c.Chat().ID, u.ID, group.RaidActionTime)
-				m.Logger.Log(c.Chat().ID, "automated", "Antiraid banned user: "+u.FirstName+" (ID: "+strconv.FormatInt(u.ID, 10)+")")
+				m.banUserRaw(targetChat.ID, u.ID, group.RaidActionTime)
+				m.Logger.Log(targetChat.ID, "automated", "Antiraid banned user: "+u.FirstName+" (ID: "+strconv.FormatInt(u.ID, 10)+")")
 			}
 		}
 	}

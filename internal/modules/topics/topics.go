@@ -29,7 +29,16 @@ func (m *Module) Register() {
 }
 
 func (m *Module) handleActionTopic(c *bot.Context) error {
-	group, err := m.Bot.Store.GetGroup(c.Chat().ID)
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+		return nil
+	}
+
+	group, err := m.Bot.Store.GetGroup(targetChat.ID)
 	if err != nil {
 		return c.Send("Error fetching group data.")
 	}

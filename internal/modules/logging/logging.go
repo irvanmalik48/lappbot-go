@@ -47,7 +47,7 @@ func (m *Module) checkForwardedLogChannel(next bot.HandlerFunc) bot.HandlerFunc 
 					return next(c)
 				}
 
-				if !m.Bot.IsAdmin(target, c.Sender()) {
+				if !m.Bot.CheckAdmin(c, target, c.Sender()) {
 					return next(c)
 				}
 
@@ -98,7 +98,7 @@ func (m *Module) handleUnsetLog(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Error resolving chat.")
 	}
-	if !m.Bot.IsAdmin(target, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, target, c.Sender()) {
 		return nil
 	}
 
@@ -114,7 +114,7 @@ func (m *Module) handleLogCategory(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Error resolving chat.")
 	}
-	if !m.Bot.IsAdmin(target, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, target, c.Sender()) {
 		return nil
 	}
 
@@ -199,7 +199,7 @@ func (m *Module) handleNoLogCategory(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Error resolving chat.")
 	}
-	if !m.Bot.IsAdmin(target, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, target, c.Sender()) {
 		return nil
 	}
 

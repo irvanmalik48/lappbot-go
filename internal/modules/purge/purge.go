@@ -52,6 +52,15 @@ func (m *Module) deleteMessages(chatID int64, messageIDs []int) {
 }
 
 func (m *Module) handlePurge(c *bot.Context) error {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+		return nil
+	}
+
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a message to purge from.")
 	}
@@ -78,9 +87,9 @@ func (m *Module) handlePurge(c *bot.Context) error {
 	}
 	toDelete = append(toDelete, endID)
 
-	m.deleteMessages(c.Chat().ID, toDelete)
+	m.deleteMessages(targetChat.ID, toDelete)
 
-	m.Logger.Log(c.Chat().ID, "admin", "Purged "+strconv.Itoa(len(toDelete))+" messages by "+c.Sender().FirstName)
+	m.Logger.Log(targetChat.ID, "admin", "Purged "+strconv.Itoa(len(toDelete))+" messages by "+c.Sender().FirstName)
 
 	if c.Message.Text != "" && (c.Message.Text == "/spurge" || len(c.Message.Text) > 7 && c.Message.Text[:7] == "/spurge") {
 		return nil
@@ -91,20 +100,38 @@ func (m *Module) handlePurge(c *bot.Context) error {
 }
 
 func (m *Module) handleDel(c *bot.Context) error {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+		return nil
+	}
+
 	if c.Message.ReplyTo == nil {
 		return nil
 	}
-	m.deleteMessages(c.Chat().ID, []int{int(c.Message.ReplyTo.ID)})
+	m.deleteMessages(targetChat.ID, []int{int(c.Message.ReplyTo.ID)})
 	c.Delete()
-	m.Logger.Log(c.Chat().ID, "admin", "Deleted message ID "+strconv.FormatInt(c.Message.ReplyTo.ID, 10)+" by "+c.Sender().FirstName)
+	m.Logger.Log(targetChat.ID, "admin", "Deleted message ID "+strconv.FormatInt(c.Message.ReplyTo.ID, 10)+" by "+c.Sender().FirstName)
 	return nil
 }
 
 func (m *Module) handlePurgeFrom(c *bot.Context) error {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+		return nil
+	}
+
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a message to mark as purge start.")
 	}
-	key := "purgefrom:" + strconv.FormatInt(c.Chat().ID, 10)
+	key := "purgefrom:" + strconv.FormatInt(targetChat.ID, 10)
 	m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Set().Key(key).Value(strconv.Itoa(int(c.Message.ReplyTo.ID))).Ex(time.Minute*5).Build())
 
 	c.Delete()
@@ -113,10 +140,19 @@ func (m *Module) handlePurgeFrom(c *bot.Context) error {
 }
 
 func (m *Module) handlePurgeTo(c *bot.Context) error {
+	targetChat, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
+	}
+
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+		return nil
+	}
+
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a message to mark as purge end.")
 	}
-	key := "purgefrom:" + strconv.FormatInt(c.Chat().ID, 10)
+	key := "purgefrom:" + strconv.FormatInt(targetChat.ID, 10)
 	res, err := m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Get().Key(key).Build()).ToString()
 	if err != nil {
 		if valkey.IsValkeyNil(err) {
@@ -136,10 +172,10 @@ func (m *Module) handlePurgeTo(c *bot.Context) error {
 	}
 	toDelete = append(toDelete, int(c.Message.ID))
 
-	m.deleteMessages(c.Chat().ID, toDelete)
+	m.deleteMessages(targetChat.ID, toDelete)
 
 	m.Store.Valkey.Do(context.Background(), m.Store.Valkey.B().Del().Key(key).Build())
-	m.Logger.Log(c.Chat().ID, "admin", "Range purge executed by "+c.Sender().FirstName+". Deleted "+strconv.Itoa(len(toDelete))+" messages.")
+	m.Logger.Log(targetChat.ID, "admin", "Range purge executed by "+c.Sender().FirstName+". Deleted "+strconv.Itoa(len(toDelete))+" messages.")
 	c.Send("Range purge complete.")
 	return nil
 }

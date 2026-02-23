@@ -255,7 +255,7 @@ func (m *Module) handleClear(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Error resolving chat.")
 	}
-	if !m.Bot.IsAdmin(target, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, target, c.Sender()) {
 		return nil
 	}
 	args := c.Args
@@ -295,7 +295,7 @@ func (m *Module) handleClearAll(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Error resolving chat.")
 	}
-	if !m.Bot.IsAdmin(target, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, target, c.Sender()) {
 		return nil
 	}
 	err = m.Store.ClearAllNotes(target.ID)
@@ -311,7 +311,7 @@ func (m *Module) handlePrivateNotes(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Error resolving chat.")
 	}
-	if !m.Bot.IsAdmin(target, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, target, c.Sender()) {
 		return nil
 	}
 	group, err := m.Store.GetGroup(target.ID)

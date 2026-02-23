@@ -169,6 +169,14 @@ func (b *Bot) Raw(method string, payload any) error {
 	return b.Client.Do(req, resp)
 }
 
+func (b *Bot) CheckAdmin(c *Context, chat *Chat, user *User) bool {
+	if b.IsAdmin(chat, user) {
+		return true
+	}
+	c.Send("You must be an admin to use this command.")
+	return false
+}
+
 func (b *Bot) IsAdmin(chat *Chat, user *User) bool {
 	keyBuf := make([]byte, 0, 64)
 	keyBuf = append(keyBuf, "admin:"...)

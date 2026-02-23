@@ -164,7 +164,7 @@ func (m *Module) handleCleanCommand(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Error resolving chat.")
 	}
-	if !m.Bot.IsAdmin(target, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, target, c.Sender()) {
 		return nil
 	}
 
@@ -221,7 +221,7 @@ func (m *Module) handleKeepCommand(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Error resolving chat.")
 	}
-	if !m.Bot.IsAdmin(target, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, target, c.Sender()) {
 		return nil
 	}
 

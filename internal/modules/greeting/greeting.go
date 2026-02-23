@@ -72,8 +72,8 @@ func (m *Module) OnUserLeft(c *bot.Context) error {
 }
 
 func (m *Module) handleWelcomeCommand(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
-		return c.Send("You must be an admin to use this command.")
+	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender()) {
+		return nil
 	}
 
 	args := c.Args
@@ -126,8 +126,8 @@ func (m *Module) handleWelcomeCommand(c *bot.Context) error {
 }
 
 func (m *Module) handleGoodbyeCommand(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
-		return c.Send("You must be an admin to use this command.")
+	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender()) {
+		return nil
 	}
 
 	args := c.Args
