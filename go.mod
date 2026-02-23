@@ -18,6 +18,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	golang.org/x/time v0.14.0 // indirect
 )
 
 require github.com/matoous/go-nanoid/v2 v2.1.0 // direct
