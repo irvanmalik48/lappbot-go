@@ -28,11 +28,14 @@ func (m *Module) warnUser(c *bot.Context, deleteMessage, silent bool) error {
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
 		return nil
 	}
-	if c.Message.ReplyTo == nil {
+	if c.Message == nil || c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to warn them.")
 	}
 
 	target := c.Message.ReplyTo.From
+	if target == nil {
+		return c.Send("Cannot warn this user (anonymous or channel message).")
+	}
 	if m.Bot.IsAdmin(targetChat, target) {
 		return c.Send("Cannot warn an admin.")
 	}
@@ -65,6 +68,9 @@ func (m *Module) checkPunish(c *bot.Context, targetChat *bot.Chat, target *bot.U
 	group, err := m.Store.GetGroup(targetChat.ID)
 	if err != nil {
 		return err
+	}
+	if group == nil {
+		return c.Send("Group settings not found.")
 	}
 
 	var since time.Time
@@ -162,7 +168,13 @@ func (m *Module) handleRmWarn(c *bot.Context) error {
 	var targetID int64
 	var targetName string
 
+	if c.Message == nil {
+		return c.Send("Reply to a user to remove their last warn.")
+	}
 	if c.Message.ReplyTo != nil {
+		if c.Message.ReplyTo.From == nil {
+			return c.Send("Cannot remove warn from this user.")
+		}
 		targetID = c.Message.ReplyTo.From.ID
 		targetName = c.Message.ReplyTo.From.FirstName
 	} else {
@@ -182,10 +194,13 @@ func (m *Module) handleResetWarns(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender()) {
 		return nil
 	}
-	if c.Message.ReplyTo == nil {
+	if c.Message == nil || c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to reset their warns.")
 	}
 	target := c.Message.ReplyTo.From
+	if target == nil {
+		return c.Send("Cannot reset warns for this user.")
+	}
 
 	err := m.Store.ResetWarns(target.ID, c.Chat().ID)
 	if err != nil {
@@ -211,6 +226,9 @@ func (m *Module) handleWarnings(c *bot.Context) error {
 	group, err := m.Store.GetGroup(c.Chat().ID)
 	if err != nil {
 		return err
+	}
+	if group == nil {
+		return c.Send("Group settings not found.")
 	}
 
 	msg := "**Warnings Settings:**\nLimit: " + strconv.Itoa(group.WarnLimit) + "\nAction: " + group.WarnAction + "\nDuration: " + group.WarnDuration
@@ -274,6 +292,9 @@ func (m *Module) handleMyWarns(c *bot.Context) error {
 	group, err := m.Store.GetGroup(c.Chat().ID)
 	if err != nil {
 		return err
+	}
+	if group == nil {
+		return c.Send("Group settings not found.")
 	}
 
 	var since time.Time
