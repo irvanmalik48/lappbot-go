@@ -337,9 +337,23 @@ func (b *Bot) StartWebhook() {
 		}
 	}
 
-	if err := fasthttp.ListenAndServe(fmt.Sprintf(":%d", b.Cfg.WebhookPort), requestHandler); err != nil {
+	server := &fasthttp.Server{
+		Handler: requestHandler,
+		Logger:  &webhookLogger{},
+	}
+
+	if err := server.ListenAndServe(fmt.Sprintf(":%d", b.Cfg.WebhookPort)); err != nil {
 		log.Fatal().Err(err).Msg("Error in Serve")
 	}
+}
+
+type webhookLogger struct{}
+
+func (wl *webhookLogger) Printf(format string, args ...any) {
+	if strings.Contains(format, "error when serving connection") {
+		return
+	}
+	log.Warn().Msgf("[fasthttp] "+format, args...)
 }
 
 func (b *Bot) SetWebhook(url string) error {
