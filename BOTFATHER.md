@@ -82,9 +82,9 @@ zalgo - Zalgo text generator
 uwuify - UwU text transformation
 emojify - Emojify text
 leetify - Leetify text
-logchannel - View Log Channel
-setlog - Set Log Channel
-unsetlog - Unset Log Channel
+loggroup - View Log Group
+setlog - Set Log Group
+unsetlog - Unset Log Group
 log - Enable Log Category
 nolog - Disable Log Category
 logcategories - List Log Categories

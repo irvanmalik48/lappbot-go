@@ -32,13 +32,13 @@ var adminCommands = map[string]bool{
 
 var settingsCommands = map[string]bool{
 	"/setlog": true, "/unsetlog": true, "/log": true, "/nolog": true,
-	"/logcategories": true, "/logchannel": true,
+	"/logcategories": true, "/loggroup": true,
 	"/welcome": true, "/goodbye": true, "/captcha": true, "/antiraid": true,
 	"/raidtime": true, "/raidactiontime": true, "/autoantiraid": true,
 	"/flood": true, "/setflood": true, "/setfloodtimer": true,
 	"/floodmode": true, "/clearflood": true, "/warnlimit": true,
 	"/warnmode": true, "/warntime": true, "/setactiontopic": true,
-	"/cleancommand": true, "/keepcommand": true, "/cleancommandtypes": true,
+	"/cleancommand": true, "/keepcommand": true, "/cleancommandtypes": true, "/cleantypes": true,
 }
 
 var userCommands = map[string]bool{

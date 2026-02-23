@@ -112,9 +112,9 @@ var helpCache = map[string]struct {
 	},
 	"logging": {
 		Text: `**Logging Commands:**
-/logchannel - View Log Channel
-/setlog - Set Log Channel
-/unsetlog - Unset Log Channel
+/loggroup - View Log Group
+/setlog <group_id> - Set Log Group
+/unsetlog - Unset Log Group
 /log <category> - Enable Log Category
 /nolog <category> - Disable Log Category
 /logcategories - List Log Categories

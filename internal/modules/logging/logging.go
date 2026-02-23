@@ -19,56 +19,15 @@ func New(b *bot.Bot, s *store.Store) *Module {
 }
 
 func (m *Module) Register() {
-	m.Bot.Handle("/logchannel", m.handleLogChannel)
+	m.Bot.Handle("/loggroup", m.handleLogGroup)
 	m.Bot.Handle("/setlog", m.handleSetLog)
 	m.Bot.Handle("/unsetlog", m.handleUnsetLog)
 	m.Bot.Handle("/log", m.handleLogCategory)
 	m.Bot.Handle("/nolog", m.handleNoLogCategory)
 	m.Bot.Handle("/logcategories", m.handleLogCategories)
-	m.Bot.Use(m.checkForwardedLogChannel)
 }
 
-func (m *Module) checkForwardedLogChannel(next bot.HandlerFunc) bot.HandlerFunc {
-	return func(c *bot.Context) error {
-		if c.Message == nil {
-			return next(c)
-		}
-		var channel *bot.Chat
-		if c.Message.ForwardFromChat != nil {
-			channel = c.Message.ForwardFromChat
-		} else if c.Message.ForwardOrigin != nil && c.Message.ForwardOrigin.Type == "channel" {
-			channel = c.Message.ForwardOrigin.Chat
-		}
-
-		if channel != nil && channel.Type == "channel" {
-			if strings.HasPrefix(c.Message.Text, "/setlog") {
-				target, err := m.Bot.GetTargetChat(c)
-				if err != nil {
-					return next(c)
-				}
-
-				if !m.Bot.CheckAdmin(c, target, c.Sender()) {
-					return next(c)
-				}
-
-				err = m.Store.SetLogChannel(target.ID, channel.ID)
-				if err != nil {
-					return c.Send("Failed to set log channel.")
-				}
-
-				m.Bot.Raw("sendMessage", map[string]any{
-					"chat_id": channel.ID,
-					"text":    "Log channel set for group " + target.Title,
-				})
-
-				return c.Send("Log channel set to " + channel.Title + " (ID: " + strconv.FormatInt(channel.ID, 10) + ")")
-			}
-		}
-		return next(c)
-	}
-}
-
-func (m *Module) handleLogChannel(c *bot.Context) error {
+func (m *Module) handleLogGroup(c *bot.Context) error {
 	target, err := m.Bot.GetTargetChat(c)
 	if err != nil {
 		return c.Send("Error resolving chat.")
@@ -80,17 +39,42 @@ func (m *Module) handleLogChannel(c *bot.Context) error {
 	}
 
 	if g.LogChannelID == 0 {
-		return c.Send("No log channel set.")
+		return c.Send("No log group set.")
 	}
 
-	return c.Send("Log channel ID: " + strconv.FormatInt(g.LogChannelID, 10))
+	return c.Send("Log group ID: " + strconv.FormatInt(g.LogChannelID, 10))
 }
 
 func (m *Module) handleSetLog(c *bot.Context) error {
-	if c.Message.ForwardFromChat == nil {
-		return c.Send("To set a log channel:\n1. Add me to the channel as admin.\n2. Send /setlog in the channel.\n3. Forward that message here.")
+	target, err := m.Bot.GetTargetChat(c)
+	if err != nil {
+		return c.Send("Error resolving chat.")
 	}
-	return nil
+
+	if !m.Bot.CheckAdmin(c, target, c.Sender()) {
+		return nil
+	}
+
+	if len(c.Args) == 0 {
+		return c.Send("Usage: /setlog <group_id>")
+	}
+
+	groupID, err := strconv.ParseInt(c.Args[0], 10, 64)
+	if err != nil {
+		return c.Send("Invalid group ID. Must be a number.")
+	}
+
+	err = m.Store.SetLogChannel(target.ID, groupID)
+	if err != nil {
+		return c.Send("Failed to set log group.")
+	}
+
+	m.Bot.Raw("sendMessage", map[string]any{
+		"chat_id": groupID,
+		"text":    "Log group set for group " + target.Title,
+	})
+
+	return c.Send("Log group set to ID: " + strconv.FormatInt(groupID, 10))
 }
 
 func (m *Module) handleUnsetLog(c *bot.Context) error {
@@ -104,9 +88,9 @@ func (m *Module) handleUnsetLog(c *bot.Context) error {
 
 	err = m.Store.SetLogChannel(target.ID, 0)
 	if err != nil {
-		return c.Send("Failed to unset log channel.")
+		return c.Send("Failed to unset log group.")
 	}
-	return c.Send("Log channel unset.")
+	return c.Send("Log group unset.")
 }
 
 func (m *Module) handleLogCategory(c *bot.Context) error {
