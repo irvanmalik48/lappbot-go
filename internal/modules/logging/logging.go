@@ -291,7 +291,7 @@ func (m *Module) Log(chatID int64, category, message string) {
 
 	m.Bot.Raw("sendMessage", map[string]any{
 		"chat_id":    group.LogChannelID,
-		"text":       "[" + strings.ToUpper(category) + "] " + message,
+		"text":       "`[" + strings.ToUpper(category) + "]` " + message,
 		"parse_mode": "Markdown",
 	})
 }
