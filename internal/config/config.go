@@ -28,10 +28,11 @@ type Config struct {
 	TelegramAPIHash string
 	ReportChannelID int64
 
-	UseWebhook  bool
-	WebhookURL  string
-	WebhookPort int
-	WebhookPath string
+	UseWebhook    bool
+	WebhookURL    string
+	WebhookPort   int
+	WebhookPath   string
+	WebhookSecret string
 }
 
 func Load() *Config {
@@ -62,10 +63,11 @@ func Load() *Config {
 		TelegramAPIHash: getEnv("TELEGRAM_API_HASH", ""),
 		ReportChannelID: getEnvAsInt64("REPORT_CHANNEL_ID", 0),
 
-		UseWebhook:  webhookURL != "",
-		WebhookURL:  webhookURL,
-		WebhookPort: getEnvAsInt("WEBHOOK_PORT", 8080),
-		WebhookPath: getEnv("WEBHOOK_PATH", "/webhook"),
+		UseWebhook:    webhookURL != "",
+		WebhookURL:    webhookURL,
+		WebhookPort:   getEnvAsInt("WEBHOOK_PORT", 8080),
+		WebhookPath:   getEnv("WEBHOOK_PATH", "/webhook"),
+		WebhookSecret: getEnv("WEBHOOK_SECRET", ""),
 	}
 }
 

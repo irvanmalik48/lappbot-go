@@ -16,6 +16,8 @@ import (
 
 	"lappbot/internal/config"
 	"lappbot/internal/store"
+
+	"golang.org/x/time/rate"
 )
 
 type HandlerFunc func(*Context) error
@@ -31,6 +33,7 @@ type Bot struct {
 	Middleware  []func(HandlerFunc) HandlerFunc
 	bufferPool  sync.Pool
 	contextPool sync.Pool
+	limiter     *rate.Limiter
 	Me          *User
 }
 
@@ -61,6 +64,7 @@ func New(cfg *config.Config, store *store.Store) (*Bot, error) {
 				return &Context{}
 			},
 		},
+		limiter: rate.NewLimiter(rate.Limit(100), 200),
 	}, nil
 }
 
@@ -102,6 +106,16 @@ func (b *Bot) Use(m func(HandlerFunc) HandlerFunc) {
 func (b *Bot) RequestHandler(ctx *fasthttp.RequestCtx) {
 	if !ctx.IsPost() {
 		ctx.SetStatusCode(fasthttp.StatusMethodNotAllowed)
+		return
+	}
+
+	if b.Cfg.WebhookSecret != "" && string(ctx.Request.Header.Peek("X-Telegram-Bot-Api-Secret-Token")) != b.Cfg.WebhookSecret {
+		ctx.SetStatusCode(fasthttp.StatusUnauthorized)
+		return
+	}
+
+	if !b.limiter.Allow() {
+		ctx.SetStatusCode(fasthttp.StatusTooManyRequests)
 		return
 	}
 
@@ -377,6 +391,10 @@ func (b *Bot) SetWebhook(url string) error {
 	reqData := map[string]any{
 		"url":                  url,
 		"drop_pending_updates": true,
+	}
+
+	if b.Cfg.WebhookSecret != "" {
+		reqData["secret_token"] = b.Cfg.WebhookSecret
 	}
 
 	buf := b.bufferPool.Get().(*bytes.Buffer)
