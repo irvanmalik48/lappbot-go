@@ -49,6 +49,9 @@ func (m *FiltersModule) handleFilter(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, target, c.Sender(), "can_change_info") {
 		return c.Send("You must be an admin to use this command.")
 	}
+	if !m.Bot.CheckBotAdmin(c, target, "can_change_info") {
+		return nil
+	}
 	args := c.Args
 	if len(args) < 1 {
 		return c.Send("Usage: /filter <trigger> <response> (or reply to a message)")
@@ -120,6 +123,9 @@ func (m *FiltersModule) handleStop(c *bot.Context) error {
 	}
 	if !m.Bot.CheckAdmin(c, target, c.Sender(), "can_change_info") {
 		return c.Send("You must be an admin to use this command.")
+	}
+	if !m.Bot.CheckBotAdmin(c, target, "can_change_info") {
+		return nil
 	}
 	args := c.Args
 	if len(args) < 1 {

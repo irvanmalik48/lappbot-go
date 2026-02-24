@@ -24,6 +24,9 @@ func (m *Module) muteUser(c *bot.Context, silent bool) error {
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_restrict_members") {
+		return nil
+	}
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to mute them.")
 	}
@@ -74,6 +77,9 @@ func (m *Module) handleUnmute(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_restrict_members") {
+		return nil
+	}
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to unmute them.")
 	}
@@ -108,6 +114,9 @@ func (m *Module) handleTimedMute(c *bot.Context) error {
 	}
 
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
+		return nil
+	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_restrict_members") {
 		return nil
 	}
 
@@ -165,6 +174,9 @@ func (m *Module) handleRealmMute(c *bot.Context) error {
 	}
 
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
+		return nil
+	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_restrict_members") {
 		return nil
 	}
 

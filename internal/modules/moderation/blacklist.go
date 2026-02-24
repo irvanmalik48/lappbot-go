@@ -20,6 +20,9 @@ func (m *Module) handleBlacklistAdd(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_restrict_members") {
+		return nil
+	}
 
 	args := c.Args
 	if len(args) < 2 {
@@ -67,6 +70,9 @@ func (m *Module) handleBlacklistRemove(c *bot.Context) error {
 	}
 
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
+		return nil
+	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_restrict_members") {
 		return nil
 	}
 

@@ -163,6 +163,9 @@ func (m *Module) handleCaptchaCommand(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_restrict_members") {
+		return nil
+	}
 
 	args := c.Args
 	if len(args) == 0 {

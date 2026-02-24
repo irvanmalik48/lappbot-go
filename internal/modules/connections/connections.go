@@ -34,6 +34,9 @@ func (m *Module) handleConnect(c *bot.Context) error {
 		if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender(), "can_change_info") {
 			return nil
 		}
+		if !m.Bot.CheckBotAdmin(c, c.Chat(), "can_change_info") {
+			return nil
+		}
 		err := m.Store.SetConnection(c.Sender().ID, c.Chat().ID)
 		if err != nil {
 			return c.Send("Failed to connect.")
@@ -50,6 +53,9 @@ func (m *Module) handleConnect(c *bot.Context) error {
 		}
 
 		if !m.Bot.CheckAdmin(c, chat, c.Sender(), "can_change_info") {
+			return nil
+		}
+		if !m.Bot.CheckBotAdmin(c, chat, "can_change_info") {
 			return nil
 		}
 
@@ -105,6 +111,9 @@ func (m *Module) onConnectCallback(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, chat, c.Sender(), "can_change_info") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, chat, "can_change_info") {
+		return nil
+	}
 
 	err = m.Store.SetConnection(c.Sender().ID, chatID)
 	if err != nil {
@@ -140,6 +149,9 @@ func (m *Module) handleReconnect(c *bot.Context) error {
 	}
 
 	if !m.Bot.CheckAdmin(c, chat, c.Sender(), "can_change_info") {
+		return nil
+	}
+	if !m.Bot.CheckBotAdmin(c, chat, "can_change_info") {
 		return nil
 	}
 

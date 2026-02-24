@@ -38,6 +38,9 @@ func (m *Module) handleUserJoined(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_restrict_members") {
+		return nil
+	}
 
 	group, err := m.Store.GetGroup(targetChat.ID)
 	if err != nil || group == nil {

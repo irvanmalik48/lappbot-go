@@ -13,6 +13,9 @@ func (m *Module) handlePin(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_pin_messages") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_pin_messages") {
+		return nil
+	}
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a message to pin/unpin it.")
 	}

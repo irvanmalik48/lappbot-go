@@ -54,6 +54,9 @@ func (m *Module) handleSetLog(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, target, c.Sender(), "can_change_info") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, target, "can_change_info") {
+		return nil
+	}
 
 	if len(c.Args) == 0 {
 		return c.Send("Usage: /setlog <group_id>")
@@ -85,6 +88,9 @@ func (m *Module) handleUnsetLog(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, target, c.Sender(), "can_change_info") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, target, "can_change_info") {
+		return nil
+	}
 
 	err = m.Store.SetLogChannel(target.ID, 0)
 	if err != nil {
@@ -99,6 +105,9 @@ func (m *Module) handleLogCategory(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 	if !m.Bot.CheckAdmin(c, target, c.Sender(), "can_change_info") {
+		return nil
+	}
+	if !m.Bot.CheckBotAdmin(c, target, "can_change_info") {
 		return nil
 	}
 
@@ -184,6 +193,9 @@ func (m *Module) handleNoLogCategory(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 	if !m.Bot.CheckAdmin(c, target, c.Sender(), "can_change_info") {
+		return nil
+	}
+	if !m.Bot.CheckBotAdmin(c, target, "can_change_info") {
 		return nil
 	}
 

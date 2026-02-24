@@ -167,6 +167,9 @@ func (m *Module) handleCleanCommand(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, target, c.Sender(), "can_delete_messages") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, target, "can_delete_messages") {
+		return nil
+	}
 
 	args := c.Args
 	if len(args) == 0 {
@@ -222,6 +225,9 @@ func (m *Module) handleKeepCommand(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 	if !m.Bot.CheckAdmin(c, target, c.Sender(), "can_delete_messages") {
+		return nil
+	}
+	if !m.Bot.CheckBotAdmin(c, target, "can_delete_messages") {
 		return nil
 	}
 

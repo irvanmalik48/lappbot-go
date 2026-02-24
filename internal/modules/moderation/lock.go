@@ -13,6 +13,9 @@ func (m *Module) handleLock(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_restrict_members") {
+		return nil
+	}
 
 	permissions := map[string]bool{
 		"can_send_messages":       false,
@@ -40,6 +43,9 @@ func (m *Module) handleUnlock(c *bot.Context) error {
 	}
 
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
+		return nil
+	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_restrict_members") {
 		return nil
 	}
 

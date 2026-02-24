@@ -179,6 +179,9 @@ func (m *Module) handleFlood(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_restrict_members") {
+		return nil
+	}
 
 	group, err := m.Store.GetGroup(targetChat.ID)
 	if err != nil {
@@ -197,6 +200,9 @@ func (m *Module) handleFlood(c *bot.Context) error {
 func (m *Module) handleSetFlood(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender(), "can_restrict_members") {
 		return c.Send("Admin only.")
+	}
+	if !m.Bot.CheckBotAdmin(c, c.Chat(), "can_restrict_members") {
+		return nil
 	}
 	args := c.Args
 	if len(args) == 0 {
@@ -221,6 +227,9 @@ func (m *Module) handleSetFlood(c *bot.Context) error {
 func (m *Module) handleSetFloodTimer(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender(), "can_restrict_members") {
 		return c.Send("Admin only.")
+	}
+	if !m.Bot.CheckBotAdmin(c, c.Chat(), "can_restrict_members") {
+		return nil
 	}
 	args := c.Args
 	if len(args) == 0 {
@@ -256,6 +265,9 @@ func (m *Module) handleFloodMode(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender(), "can_restrict_members") {
 		return c.Send("Admin only.")
 	}
+	if !m.Bot.CheckBotAdmin(c, c.Chat(), "can_restrict_members") {
+		return nil
+	}
 	args := c.Args
 	if len(args) == 0 {
 		return c.Send("Usage: /floodmode <action> [duration]")
@@ -270,6 +282,9 @@ func (m *Module) handleFloodMode(c *bot.Context) error {
 func (m *Module) handleClearFlood(c *bot.Context) error {
 	if !m.Bot.IsAdmin(c.Chat(), c.Sender(), "can_restrict_members") {
 		return c.Send("Admin only.")
+	}
+	if !m.Bot.CheckBotAdmin(c, c.Chat(), "can_restrict_members") {
+		return nil
 	}
 	args := c.Args
 	if len(args) == 0 {

@@ -60,6 +60,9 @@ func (m *Module) handlePurge(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_delete_messages") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_delete_messages") {
+		return nil
+	}
 
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a message to purge from.")
@@ -108,6 +111,9 @@ func (m *Module) handleDel(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_delete_messages") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_delete_messages") {
+		return nil
+	}
 
 	if c.Message.ReplyTo == nil {
 		return nil
@@ -125,6 +131,9 @@ func (m *Module) handlePurgeFrom(c *bot.Context) error {
 	}
 
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_delete_messages") {
+		return nil
+	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_delete_messages") {
 		return nil
 	}
 
@@ -146,6 +155,9 @@ func (m *Module) handlePurgeTo(c *bot.Context) error {
 	}
 
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_delete_messages") {
+		return nil
+	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_delete_messages") {
 		return nil
 	}
 

@@ -24,6 +24,9 @@ func (m *Module) kickUser(c *bot.Context, silent bool) error {
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_restrict_members") {
+		return nil
+	}
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to kick them.")
 	}
@@ -71,6 +74,9 @@ func (m *Module) banUser(c *bot.Context, silent bool) error {
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_restrict_members") {
+		return nil
+	}
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to ban them.")
 	}
@@ -112,6 +118,9 @@ func (m *Module) handleUnban(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_restrict_members") {
+		return nil
+	}
 	if c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to unban them.")
 	}
@@ -137,6 +146,9 @@ func (m *Module) handleTimedBan(c *bot.Context) error {
 	}
 
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
+		return nil
+	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_restrict_members") {
 		return nil
 	}
 
@@ -186,6 +198,9 @@ func (m *Module) handleRealmBan(c *bot.Context) error {
 	}
 
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
+		return nil
+	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_restrict_members") {
 		return nil
 	}
 

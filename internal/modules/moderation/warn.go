@@ -28,6 +28,9 @@ func (m *Module) warnUser(c *bot.Context, deleteMessage, silent bool) error {
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_restrict_members") {
+		return nil
+	}
 	if c.Message == nil || c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to warn them.")
 	}
@@ -168,6 +171,9 @@ func (m *Module) handleRmWarn(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender(), "can_restrict_members") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, c.Chat(), "can_restrict_members") {
+		return nil
+	}
 
 	var targetID int64
 	var targetName string
@@ -198,6 +204,9 @@ func (m *Module) handleResetWarns(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender(), "can_restrict_members") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, c.Chat(), "can_restrict_members") {
+		return nil
+	}
 	if c.Message == nil || c.Message.ReplyTo == nil {
 		return c.Send("Reply to a user to reset their warns.")
 	}
@@ -216,6 +225,9 @@ func (m *Module) handleResetWarns(c *bot.Context) error {
 
 func (m *Module) handleResetAllWarns(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender(), "can_restrict_members") {
+		return nil
+	}
+	if !m.Bot.CheckBotAdmin(c, c.Chat(), "can_restrict_members") {
 		return nil
 	}
 	err := m.Store.ResetAllWarns(c.Chat().ID)
@@ -247,6 +259,9 @@ func (m *Module) handleWarnMode(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender(), "can_restrict_members") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, c.Chat(), "can_restrict_members") {
+		return nil
+	}
 	args := c.Args
 	if len(args) == 0 {
 		return m.handleWarnings(c)
@@ -259,6 +274,9 @@ func (m *Module) handleWarnMode(c *bot.Context) error {
 
 func (m *Module) handleWarnLimit(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender(), "can_restrict_members") {
+		return nil
+	}
+	if !m.Bot.CheckBotAdmin(c, c.Chat(), "can_restrict_members") {
 		return nil
 	}
 	args := c.Args
@@ -277,6 +295,9 @@ func (m *Module) handleWarnLimit(c *bot.Context) error {
 
 func (m *Module) handleWarnTime(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender(), "can_restrict_members") {
+		return nil
+	}
+	if !m.Bot.CheckBotAdmin(c, c.Chat(), "can_restrict_members") {
 		return nil
 	}
 	args := c.Args
@@ -326,6 +347,9 @@ func (m *Module) handleMyWarns(c *bot.Context) error {
 
 func (m *Module) onRemoveWarnBtn(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender(), "can_restrict_members") {
+		return nil
+	}
+	if !m.Bot.CheckBotAdmin(c, c.Chat(), "can_restrict_members") {
 		return nil
 	}
 

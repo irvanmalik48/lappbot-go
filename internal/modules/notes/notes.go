@@ -258,6 +258,9 @@ func (m *Module) handleClear(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, target, c.Sender(), "can_change_info") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, target, "can_change_info") {
+		return nil
+	}
 	args := c.Args
 	if len(args) == 0 {
 		return c.Send("Usage: /clear <name>")
@@ -298,6 +301,9 @@ func (m *Module) handleClearAll(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, target, c.Sender(), "can_change_info") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, target, "can_change_info") {
+		return nil
+	}
 	err = m.Store.ClearAllNotes(target.ID)
 	if err != nil {
 		return c.Send("Failed to clear notes.")
@@ -312,6 +318,9 @@ func (m *Module) handlePrivateNotes(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 	if !m.Bot.CheckAdmin(c, target, c.Sender(), "can_change_info") {
+		return nil
+	}
+	if !m.Bot.CheckBotAdmin(c, target, "can_change_info") {
 		return nil
 	}
 	group, err := m.Store.GetGroup(target.ID)

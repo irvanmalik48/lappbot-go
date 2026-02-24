@@ -75,6 +75,9 @@ func (m *Module) handleWelcomeCommand(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender(), "can_change_info") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, c.Chat(), "can_change_info") {
+		return nil
+	}
 
 	args := c.Args
 	if len(args) == 0 {
@@ -127,6 +130,9 @@ func (m *Module) handleWelcomeCommand(c *bot.Context) error {
 
 func (m *Module) handleGoodbyeCommand(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender(), "can_change_info") {
+		return nil
+	}
+	if !m.Bot.CheckBotAdmin(c, c.Chat(), "can_change_info") {
 		return nil
 	}
 

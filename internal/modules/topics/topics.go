@@ -37,6 +37,9 @@ func (m *Module) handleActionTopic(c *bot.Context) error {
 	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_manage_topics") {
 		return nil
 	}
+	if !m.Bot.CheckBotAdmin(c, targetChat, "can_manage_topics") {
+		return nil
+	}
 
 	group, err := m.Bot.Store.GetGroup(targetChat.ID)
 	if err != nil {
