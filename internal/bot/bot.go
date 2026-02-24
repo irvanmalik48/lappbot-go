@@ -180,7 +180,23 @@ func (b *Bot) Raw(method string, payload any) error {
 	}
 	req.SetBody(buf.Bytes())
 
-	return b.Client.Do(req, resp)
+	if err := b.Client.Do(req, resp); err != nil {
+		return err
+	}
+
+	var res struct {
+		Ok          bool   `json:"ok"`
+		ErrorCode   int    `json:"error_code"`
+		Description string `json:"description"`
+	}
+	if err := json.Unmarshal(resp.Body(), &res); err != nil {
+		return err
+	}
+	if !res.Ok {
+		return fmt.Errorf("api error: %d %s", res.ErrorCode, res.Description)
+	}
+
+	return nil
 }
 
 func (b *Bot) CheckAdmin(c *Context, chat *Chat, user *User) bool {
