@@ -10,7 +10,7 @@ func (m *Module) handlePin(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_pin_messages") {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {

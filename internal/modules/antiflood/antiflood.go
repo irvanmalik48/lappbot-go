@@ -37,7 +37,7 @@ func (m *Module) CheckFlood(next bot.HandlerFunc) bot.HandlerFunc {
 		if c.Chat().Type == "private" {
 			return next(c)
 		}
-		if m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+		if m.Bot.IsAdmin(c.Chat(), c.Sender(), "can_restrict_members") {
 			return next(c)
 		}
 
@@ -176,7 +176,7 @@ func (m *Module) handleFlood(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
 		return nil
 	}
 
@@ -195,7 +195,7 @@ func (m *Module) handleFlood(c *bot.Context) error {
 }
 
 func (m *Module) handleSetFlood(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender(), "can_restrict_members") {
 		return c.Send("Admin only.")
 	}
 	args := c.Args
@@ -219,7 +219,7 @@ func (m *Module) handleSetFlood(c *bot.Context) error {
 }
 
 func (m *Module) handleSetFloodTimer(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender(), "can_restrict_members") {
 		return c.Send("Admin only.")
 	}
 	args := c.Args
@@ -253,7 +253,7 @@ func (m *Module) handleSetFloodTimer(c *bot.Context) error {
 }
 
 func (m *Module) handleFloodMode(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender(), "can_restrict_members") {
 		return c.Send("Admin only.")
 	}
 	args := c.Args
@@ -268,7 +268,7 @@ func (m *Module) handleFloodMode(c *bot.Context) error {
 }
 
 func (m *Module) handleClearFlood(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender(), "can_restrict_members") {
 		return c.Send("Admin only.")
 	}
 	args := c.Args

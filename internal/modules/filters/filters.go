@@ -46,7 +46,7 @@ func (m *FiltersModule) handleFilter(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Error resolving chat.")
 	}
-	if !m.Bot.CheckAdmin(c, target, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, target, c.Sender(), "can_change_info") {
 		return c.Send("You must be an admin to use this command.")
 	}
 	args := c.Args
@@ -118,7 +118,7 @@ func (m *FiltersModule) handleStop(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Error resolving chat.")
 	}
-	if !m.Bot.CheckAdmin(c, target, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, target, c.Sender(), "can_change_info") {
 		return c.Send("You must be an admin to use this command.")
 	}
 	args := c.Args

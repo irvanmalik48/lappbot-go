@@ -51,7 +51,7 @@ func (m *Module) handleSetLog(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.CheckAdmin(c, target, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, target, c.Sender(), "can_change_info") {
 		return nil
 	}
 
@@ -82,7 +82,7 @@ func (m *Module) handleUnsetLog(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Error resolving chat.")
 	}
-	if !m.Bot.CheckAdmin(c, target, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, target, c.Sender(), "can_change_info") {
 		return nil
 	}
 
@@ -98,7 +98,7 @@ func (m *Module) handleLogCategory(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Error resolving chat.")
 	}
-	if !m.Bot.CheckAdmin(c, target, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, target, c.Sender(), "can_change_info") {
 		return nil
 	}
 
@@ -183,7 +183,7 @@ func (m *Module) handleNoLogCategory(c *bot.Context) error {
 	if err != nil {
 		return c.Send("Error resolving chat.")
 	}
-	if !m.Bot.CheckAdmin(c, target, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, target, c.Sender(), "can_change_info") {
 		return nil
 	}
 

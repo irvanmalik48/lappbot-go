@@ -10,7 +10,7 @@ func (m *Module) handleLock(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
 		return nil
 	}
 
@@ -39,7 +39,7 @@ func (m *Module) handleUnlock(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
 		return nil
 	}
 

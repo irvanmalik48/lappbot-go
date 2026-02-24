@@ -72,7 +72,7 @@ func (m *Module) OnUserLeft(c *bot.Context) error {
 }
 
 func (m *Module) handleWelcomeCommand(c *bot.Context) error {
-	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender()) {
+	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender(), "can_change_info") {
 		return nil
 	}
 
@@ -126,7 +126,7 @@ func (m *Module) handleWelcomeCommand(c *bot.Context) error {
 }
 
 func (m *Module) handleGoodbyeCommand(c *bot.Context) error {
-	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender()) {
+	if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender(), "can_change_info") {
 		return nil
 	}
 

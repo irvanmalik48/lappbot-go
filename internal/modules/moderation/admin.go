@@ -12,7 +12,7 @@ func (m *Module) handleApprove(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
@@ -41,7 +41,7 @@ func (m *Module) handleUnapprove(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
@@ -64,7 +64,7 @@ func (m *Module) handlePromote(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_promote_members") {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {
@@ -117,7 +117,7 @@ func (m *Module) handleDemote(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_promote_members") {
 		return nil
 	}
 	if c.Message.ReplyTo == nil {

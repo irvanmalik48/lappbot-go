@@ -31,7 +31,7 @@ func (m *Module) handleConnect(c *bot.Context) error {
 	args := c.Args
 
 	if c.Chat().Type != "private" {
-		if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender()) {
+		if !m.Bot.CheckAdmin(c, c.Chat(), c.Sender(), "can_change_info") {
 			return nil
 		}
 		err := m.Store.SetConnection(c.Sender().ID, c.Chat().ID)
@@ -49,7 +49,7 @@ func (m *Module) handleConnect(c *bot.Context) error {
 			return c.Send("Chat not found. Make sure the bot is in the chat or use the correct ID.")
 		}
 
-		if !m.Bot.CheckAdmin(c, chat, c.Sender()) {
+		if !m.Bot.CheckAdmin(c, chat, c.Sender(), "can_change_info") {
 			return nil
 		}
 
@@ -102,7 +102,7 @@ func (m *Module) onConnectCallback(c *bot.Context) error {
 		return nil
 	}
 
-	if !m.Bot.CheckAdmin(c, chat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, chat, c.Sender(), "can_change_info") {
 		return nil
 	}
 
@@ -139,7 +139,7 @@ func (m *Module) handleReconnect(c *bot.Context) error {
 		return c.Send("Previous chat not found.")
 	}
 
-	if !m.Bot.CheckAdmin(c, chat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, chat, c.Sender(), "can_change_info") {
 		return nil
 	}
 

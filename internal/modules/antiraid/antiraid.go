@@ -35,7 +35,7 @@ func (m *Module) handleUserJoined(c *bot.Context) error {
 		return c.Send("Error resolving chat.")
 	}
 
-	if !m.Bot.CheckAdmin(c, targetChat, c.Sender()) {
+	if !m.Bot.CheckAdmin(c, targetChat, c.Sender(), "can_restrict_members") {
 		return nil
 	}
 
@@ -88,7 +88,7 @@ func (m *Module) banUserRaw(chatID, userID int64, durationStr string) error {
 }
 
 func (m *Module) handleAntiraid(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender(), "can_restrict_members") {
 		return c.Send("You must be an admin to use this command.")
 	}
 
@@ -116,7 +116,7 @@ func (m *Module) handleAntiraid(c *bot.Context) error {
 }
 
 func (m *Module) handleRaidTime(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender(), "can_restrict_members") {
 		return c.Send("You must be an admin to use this command.")
 	}
 
@@ -124,7 +124,7 @@ func (m *Module) handleRaidTime(c *bot.Context) error {
 }
 
 func (m *Module) handleRaidActionTime(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender(), "can_restrict_members") {
 		return c.Send("You must be an admin to use this command.")
 	}
 
@@ -146,7 +146,7 @@ func (m *Module) handleRaidActionTime(c *bot.Context) error {
 }
 
 func (m *Module) handleAutoAntiraid(c *bot.Context) error {
-	if !m.Bot.IsAdmin(c.Chat(), c.Sender()) {
+	if !m.Bot.IsAdmin(c.Chat(), c.Sender(), "can_restrict_members") {
 		return c.Send("You must be an admin to use this command.")
 	}
 
