@@ -134,9 +134,17 @@ type InlineKeyboardButton struct {
 }
 
 type ChatMember struct {
-	User   *User  `json:"user"`
-	Status string `json:"status"`
-	Role   string `json:"custom_title,omitempty"`
+	User                *User  `json:"user"`
+	Status              string `json:"status"`
+	Role                string `json:"custom_title,omitempty"`
+	CanPromoteMembers   bool   `json:"can_promote_members,omitempty"`
+	CanChangeInfo       bool   `json:"can_change_info,omitempty"`
+	CanDeleteMessages   bool   `json:"can_delete_messages,omitempty"`
+	CanRestrictMembers  bool   `json:"can_restrict_members,omitempty"`
+	CanInviteUsers      bool   `json:"can_invite_users,omitempty"`
+	CanPinMessages      bool   `json:"can_pin_messages,omitempty"`
+	CanManageTopics     bool   `json:"can_manage_topics,omitempty"`
+	CanManageVideoChats bool   `json:"can_manage_video_chats,omitempty"`
 }
 
 type SendMessageReq struct {

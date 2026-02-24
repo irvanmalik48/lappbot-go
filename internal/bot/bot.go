@@ -199,20 +199,28 @@ func (b *Bot) Raw(method string, payload any) error {
 	return nil
 }
 
-func (b *Bot) CheckAdmin(c *Context, chat *Chat, user *User) bool {
-	if b.IsAdmin(chat, user) {
+func (b *Bot) CheckAdmin(c *Context, chat *Chat, user *User, perms ...string) bool {
+	if b.IsAdmin(chat, user, perms...) {
 		return true
 	}
-	c.Send("You must be an admin to use this command.")
+	if len(perms) > 0 {
+		c.Send("You do not have the required permissions: " + strings.Join(perms, ", "))
+	} else {
+		c.Send("You must be an admin to use this command.")
+	}
 	return false
 }
 
-func (b *Bot) IsAdmin(chat *Chat, user *User) bool {
+func (b *Bot) IsAdmin(chat *Chat, user *User, perms ...string) bool {
 	keyBuf := make([]byte, 0, 64)
 	keyBuf = append(keyBuf, "admin:"...)
 	keyBuf = strconv.AppendInt(keyBuf, chat.ID, 10)
 	keyBuf = append(keyBuf, ':')
 	keyBuf = strconv.AppendInt(keyBuf, user.ID, 10)
+	if len(perms) > 0 {
+		keyBuf = append(keyBuf, ':')
+		keyBuf = append(keyBuf, strings.Join(perms, ",")...)
+	}
 	key := string(keyBuf)
 
 	val, err := b.Store.Valkey.Do(context.Background(), b.Store.Valkey.B().Get().Key(key).Build()).ToString()
@@ -258,7 +266,50 @@ func (b *Bot) IsAdmin(chat *Chat, user *User) bool {
 		return false
 	}
 
-	isAdmin := res.Result.Status == "administrator" || res.Result.Status == "creator"
+	isAdmin := res.Result.Status == "creator"
+	if !isAdmin && res.Result.Status == "administrator" {
+		isAdmin = true
+		for _, p := range perms {
+			switch p {
+			case "can_promote_members":
+				if !res.Result.CanPromoteMembers {
+					isAdmin = false
+				}
+			case "can_change_info":
+				if !res.Result.CanChangeInfo {
+					isAdmin = false
+				}
+			case "can_delete_messages":
+				if !res.Result.CanDeleteMessages {
+					isAdmin = false
+				}
+			case "can_restrict_members":
+				if !res.Result.CanRestrictMembers {
+					isAdmin = false
+				}
+			case "can_invite_users":
+				if !res.Result.CanInviteUsers {
+					isAdmin = false
+				}
+			case "can_pin_messages":
+				if !res.Result.CanPinMessages {
+					isAdmin = false
+				}
+			case "can_manage_topics":
+				if !res.Result.CanManageTopics {
+					isAdmin = false
+				}
+			case "can_manage_video_chats":
+				if !res.Result.CanManageVideoChats {
+					isAdmin = false
+				}
+			}
+			if !isAdmin {
+				break
+			}
+		}
+	}
+
 	v := "0"
 	if isAdmin {
 		v = "1"
