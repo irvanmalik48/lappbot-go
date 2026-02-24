@@ -83,7 +83,7 @@ func (s *Store) Ping() (map[string]time.Duration, error) {
 }
 func (s *Store) SetConnection(adminID int64, chatID int64) error {
 	key := "conn:" + strconv.FormatInt(adminID, 10)
-	return s.Valkey.Do(context.Background(), s.Valkey.B().Set().Key(key).Value(strconv.FormatInt(chatID, 10)).Ex(30*time.Minute).Build()).Error()
+	return s.Valkey.Do(context.Background(), s.Valkey.B().Set().Key(key).Value(strconv.FormatInt(chatID, 10)).Ex(1*time.Hour).Build()).Error()
 }
 
 func (s *Store) GetConnection(adminID int64) (int64, error) {
@@ -92,6 +92,7 @@ func (s *Store) GetConnection(adminID int64) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	s.Valkey.Do(context.Background(), s.Valkey.B().Expire().Key(key).Seconds(3600).Build())
 	return val, nil
 }
 
