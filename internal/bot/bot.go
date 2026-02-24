@@ -211,6 +211,22 @@ func (b *Bot) CheckAdmin(c *Context, chat *Chat, user *User, perms ...string) bo
 	return false
 }
 
+func (b *Bot) CheckBotAdmin(c *Context, chat *Chat, perms ...string) bool {
+	if b.Me == nil {
+		c.Send("Bot information not initialized.")
+		return false
+	}
+	if b.IsAdmin(chat, b.Me, perms...) {
+		return true
+	}
+	if len(perms) > 0 {
+		c.Send("I do not have the required permissions to perform this action: " + strings.Join(perms, ", "))
+	} else {
+		c.Send("I must be an admin to perform this action.")
+	}
+	return false
+}
+
 func (b *Bot) IsAdmin(chat *Chat, user *User, perms ...string) bool {
 	keyBuf := make([]byte, 0, 64)
 	keyBuf = append(keyBuf, "admin:"...)
@@ -364,7 +380,13 @@ func (b *Bot) GetTargetChat(c *Context) (*Chat, error) {
 	if c.Chat().Type == "private" {
 		connectedChatID, err := b.Store.GetConnection(c.Sender().ID)
 		if err == nil && connectedChatID != 0 {
-			return &Chat{ID: connectedChatID, Type: "group", Title: "Connected Chat"}, nil
+			target := &Chat{ID: connectedChatID, Type: "group", Title: "Connected Chat"}
+			if !b.IsAdmin(target, c.Sender(), "can_change_info") {
+				b.Store.Disconnect(c.Sender().ID)
+				c.Send("Connection revoked: you are no longer an admin in the target group.")
+				return nil, fmt.Errorf("connection revoked")
+			}
+			return target, nil
 		}
 	}
 
