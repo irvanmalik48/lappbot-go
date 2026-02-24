@@ -83,8 +83,6 @@ func (m *Module) handlePromote(c *bot.Context) error {
 		"user_id":                target.ID,
 		"is_anonymous":           false,
 		"can_manage_chat":        true,
-		"can_post_messages":      true,
-		"can_edit_messages":      true,
 		"can_delete_messages":    true,
 		"can_manage_video_chats": true,
 		"can_restrict_members":   true,
@@ -99,11 +97,14 @@ func (m *Module) handlePromote(c *bot.Context) error {
 		return c.Send("Failed to promote user: " + err.Error())
 	}
 
-	m.Bot.Raw("setChatAdministratorCustomTitle", map[string]any{
+	err = m.Bot.Raw("setChatAdministratorCustomTitle", map[string]any{
 		"chat_id":      targetChat.ID,
 		"user_id":      target.ID,
 		"custom_title": title,
 	})
+	if err != nil {
+		m.Logger.Log(targetChat.ID, "admin", "Failed to set custom title: "+err.Error())
+	}
 
 	m.Bot.InvalidateAdminCache(targetChat.ID, target.ID)
 	m.Logger.Log(targetChat.ID, "admin", "Promoted "+target.FirstName+" to admin ("+title+") by "+c.Sender().FirstName)
@@ -129,8 +130,6 @@ func (m *Module) handleDemote(c *bot.Context) error {
 		"user_id":                target.ID,
 		"is_anonymous":           false,
 		"can_manage_chat":        false,
-		"can_post_messages":      false,
-		"can_edit_messages":      false,
 		"can_delete_messages":    false,
 		"can_manage_video_chats": false,
 		"can_restrict_members":   false,
